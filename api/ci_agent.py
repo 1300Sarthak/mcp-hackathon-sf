@@ -11,6 +11,7 @@ from typing import Dict, List, Any, Union, Callable, Optional
 from strands import Agent
 from strands.models.litellm import LiteLLMModel
 from strands_tools import bright_data
+import functools
 import asyncio
 from datetime import datetime
 from dotenv import load_dotenv
@@ -43,6 +44,19 @@ def get_gemini_model():
     )
     
     return model
+
+def get_configured_bright_data():
+    """Configure Bright Data tool with proper zone settings"""
+    
+    # Set environment variables for Bright Data if they're missing
+    if not os.getenv("BRIGHTDATA_ZONE"):
+        os.environ["BRIGHTDATA_ZONE"] = "datacenter"
+    
+    if not os.getenv("BRIGHTDATA_USERNAME") and os.getenv("BRIGHTDATA_API_KEY"):
+        # For API key auth, username can be set to a default
+        os.environ["BRIGHTDATA_USERNAME"] = "api_user"
+    
+    return bright_data
 
 # Agent System Prompts
 RESEARCHER_PROMPT = """You are a Researcher Agent specialized in competitive intelligence data gathering.
@@ -180,10 +194,11 @@ class MultiAgentCompetitiveIntelligence:
             callback_handler = StreamingCallbackHandler(stream_callback) if stream_callback else None
             
             # Researcher Agent with web capabilities
+            configured_bright_data = get_configured_bright_data()
             self.researcher_agent = Agent(
                 model=gemini_model,
                 system_prompt=RESEARCHER_PROMPT,
-                tools=[bright_data],
+                tools=[configured_bright_data],
                 callback_handler=callback_handler
             )
             
