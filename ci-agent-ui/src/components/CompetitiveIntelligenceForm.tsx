@@ -70,9 +70,9 @@ interface CompetitiveIntelligenceFormProps {
   initialUrl?: string
 }
 
-export default function CompetitiveIntelligenceForm({ 
-  initialCompany = '', 
-  initialUrl = '' 
+export default function CompetitiveIntelligenceForm({
+  initialCompany = '',
+  initialUrl = ''
 }: CompetitiveIntelligenceFormProps = {}) {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
