@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -81,7 +81,15 @@ interface AnalysisResult {
 
 const API_BASE_URL = 'http://localhost:8000'
 
-export default function CompetitiveIntelligenceForm() {
+interface CompetitiveIntelligenceFormProps {
+  initialCompany?: string
+  initialUrl?: string
+}
+
+export default function CompetitiveIntelligenceForm({
+  initialCompany = '',
+  initialUrl = ''
+}: CompetitiveIntelligenceFormProps = {}) {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [currentStep, setCurrentStep] = useState('')
@@ -91,10 +99,23 @@ export default function CompetitiveIntelligenceForm() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      companyName: '',
-      companyUrl: '',
+      companyName: initialCompany,
+      companyUrl: initialUrl,
     },
   })
+
+  // Auto-submit when initial values are provided
+  useEffect(() => {
+    if (initialCompany && !isAnalyzing && !analysisResult) {
+      // Small delay to ensure form is fully initialized
+      setTimeout(() => {
+        analyzeCompetitor({
+          companyName: initialCompany,
+          companyUrl: initialUrl,
+        })
+      }, 100)
+    }
+  }, [initialCompany, initialUrl, isAnalyzing, analysisResult])
 
   const analyzeCompetitor = async (values: FormValues) => {
     setIsAnalyzing(true)
