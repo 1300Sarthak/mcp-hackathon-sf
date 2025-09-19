@@ -4,6 +4,8 @@ FastAPI Application for Multi-Agent Competitive Intelligence
 RESTful API with streaming capabilities for real-time tool call monitoring
 """
 
+from redis_cache import get_cache
+from ci_agent import MultiAgentCompetitiveIntelligence, get_gemini_model
 import asyncio
 import json
 import logging
@@ -22,7 +24,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import our competitive intelligence system
-from ci_agent import MultiAgentCompetitiveIntelligence, get_gemini_model
 
 # Configure logging
 logging.basicConfig(
@@ -34,21 +35,23 @@ logger = logging.getLogger(__name__)
 # Global storage for streaming sessions
 streaming_sessions: Dict[str, Dict] = {}
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifespan"""
     logger.info("🚀 Starting Multi-Agent Competitive Intelligence API")
-    
+
     # Test environment setup on startup (non-blocking)
     try:
         get_gemini_model()
         logger.info("✅ Gemini model configuration verified")
     except Exception as e:
         logger.warning(f"⚠️ Environment setup incomplete: {e}")
-        logger.info("💡 Add real API keys to api/.env to enable full functionality")
-    
+        logger.info(
+            "💡 Add real API keys to api/.env to enable full functionality")
+
     yield
-    
+
     logger.info("🛑 Shutting down API")
 
 # Initialize FastAPI app
@@ -69,12 +72,17 @@ app.add_middleware(
 )
 
 # Pydantic models for API requests/responses
+
+
 class AnalysisRequest(BaseModel):
     """Request model for competitive analysis"""
-    competitor_name: str = Field(..., description="Name of the competitor to analyze")
-    competitor_website: Optional[str] = Field(None, description="Website URL of the competitor")
-    stream: bool = Field(False, description="Enable streaming for real-time updates")
-    
+    competitor_name: str = Field(...,
+                                 description="Name of the competitor to analyze")
+    competitor_website: Optional[str] = Field(
+        None, description="Website URL of the competitor")
+    stream: bool = Field(
+        False, description="Enable streaming for real-time updates")
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -86,6 +94,7 @@ class AnalysisRequest(BaseModel):
             ]
         }
     }
+
 
 class AnalysisResponse(BaseModel):
     """Response model for completed analysis"""
@@ -100,11 +109,13 @@ class AnalysisResponse(BaseModel):
     workflow: str
     session_id: Optional[str] = None
 
+
 class ErrorResponse(BaseModel):
     """Error response model"""
     error: str
     timestamp: str
     status: str = "error"
+
 
 class StreamEvent(BaseModel):
     """Streaming event model"""
@@ -117,6 +128,8 @@ class StreamEvent(BaseModel):
     data: Optional[Dict] = None
 
 # Health check endpoint
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
@@ -127,6 +140,8 @@ async def health_check():
     }
 
 # Environment status endpoint
+
+
 @app.get("/status")
 async def get_status():
     """Get API and environment status"""
@@ -136,61 +151,72 @@ async def get_status():
         gemini_status = "connected"
     except Exception as e:
         gemini_status = f"error: {str(e)}"
-    
+
+    # Get cache status
+    cache = get_cache()
+    cache_stats = cache.get_cache_stats()
+
     return {
         "api_status": "running",
         "gemini_status": gemini_status,
+        "cache_status": cache_stats,
         "active_sessions": len(streaming_sessions),
         "timestamp": datetime.now().isoformat()
     }
 
 # Non-streaming analysis endpoint
+
+
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_competitor(request: AnalysisRequest):
     """
     Perform competitive intelligence analysis
-    
+
     This endpoint runs the full multi-agent workflow and returns complete results.
     For real-time updates, use the streaming endpoint.
     """
     try:
         logger.info(f"Starting analysis for: {request.competitor_name}")
-        
+
         # Initialize the intelligence system
         intelligence_system = MultiAgentCompetitiveIntelligence()
-        
+
         # Run the workflow
         result = intelligence_system.run_competitive_intelligence_workflow(
             competitor_name=request.competitor_name,
             competitor_website=request.competitor_website
         )
-        
+
         if result["status"] == "error":
-            raise HTTPException(status_code=500, detail=result.get("error", "Analysis failed"))
-        
+            raise HTTPException(status_code=500, detail=result.get(
+                "error", "Analysis failed"))
+
         logger.info(f"Analysis completed for: {request.competitor_name}")
-        
+
         return AnalysisResponse(**result)
-        
+
     except Exception as e:
-        logger.error(f"Analysis failed for {request.competitor_name}: {str(e)}")
+        logger.error(
+            f"Analysis failed for {request.competitor_name}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Streaming analysis endpoint
+
+
 @app.post("/analyze/stream")
 async def analyze_competitor_stream(request: AnalysisRequest):
     """
     Perform competitive intelligence analysis with real-time streaming
-    
+
     This endpoint provides real-time updates during the analysis process,
     including tool calls, status updates, and intermediate results.
     """
     if not request.stream:
         # If streaming not requested, redirect to regular endpoint
         return await analyze_competitor(request)
-    
+
     session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{request.competitor_name.replace(' ', '_')}"
-    
+
     async def generate_stream():
         """Generate streaming events"""
         try:
@@ -200,9 +226,9 @@ async def analyze_competitor_stream(request: AnalysisRequest):
                 "competitor": request.competitor_name,
                 "status": "running"
             }
-            
+
             events_queue = asyncio.Queue()
-            
+
             def stream_callback(event):
                 """Callback to capture streaming events"""
                 try:
@@ -220,17 +246,18 @@ async def analyze_competitor_stream(request: AnalysisRequest):
                     asyncio.create_task(events_queue.put(safe_event))
                 except Exception as e:
                     logger.error(f"Stream callback error: {e}")
-            
+
             # Start analysis in background
             async def run_analysis():
                 intelligence_system = None
                 try:
-                    intelligence_system = MultiAgentCompetitiveIntelligence(stream_callback)
+                    intelligence_system = MultiAgentCompetitiveIntelligence(
+                        stream_callback)
                     result = intelligence_system.run_competitive_intelligence_workflow(
                         competitor_name=request.competitor_name,
                         competitor_website=request.competitor_website
                     )
-                    
+
                     # Send final result
                     final_event = {
                         "timestamp": datetime.now().isoformat(),
@@ -238,13 +265,14 @@ async def analyze_competitor_stream(request: AnalysisRequest):
                         "data": result
                     }
                     await events_queue.put(final_event)
-                    
+
                     # Update session status
                     streaming_sessions[session_id]["status"] = "completed"
                     streaming_sessions[session_id]["result"] = result
-                    
+
                 except Exception as e:
-                    logger.error(f"Analysis error for session {session_id}: {e}")
+                    logger.error(
+                        f"Analysis error for session {session_id}: {e}")
                     error_event = {
                         "timestamp": datetime.now().isoformat(),
                         "type": "error",
@@ -260,13 +288,13 @@ async def analyze_competitor_stream(request: AnalysisRequest):
                             pass
                         except Exception as cleanup_error:
                             logger.warning(f"Cleanup warning: {cleanup_error}")
-                    
+
                     # Signal end of stream
                     await events_queue.put(None)
-            
+
             # Start analysis
             analysis_task = asyncio.create_task(run_analysis())
-            
+
             # Send initial event
             initial_event = {
                 "timestamp": datetime.now().isoformat(),
@@ -275,16 +303,16 @@ async def analyze_competitor_stream(request: AnalysisRequest):
                 "message": f"Starting analysis for {request.competitor_name}"
             }
             yield f"data: {json.dumps(initial_event)}\n\n"
-            
+
             # Stream events as they come
             while True:
                 try:
                     # Wait for event with timeout
                     event = await asyncio.wait_for(events_queue.get(), timeout=1.0)
-                    
+
                     if event is None:  # End of stream signal
                         break
-                    
+
                     # Safe JSON serialization
                     try:
                         event_json = json.dumps(event)
@@ -298,7 +326,7 @@ async def analyze_competitor_stream(request: AnalysisRequest):
                             "original_type": event.get("type", "unknown")
                         }
                         yield f"data: {json.dumps(safe_event)}\n\n"
-                    
+
                 except asyncio.TimeoutError:
                     # Send heartbeat to keep connection alive
                     heartbeat = {
@@ -307,10 +335,10 @@ async def analyze_competitor_stream(request: AnalysisRequest):
                     }
                     yield f"data: {json.dumps(heartbeat)}\n\n"
                     continue
-            
+
             # Clean up
             await analysis_task
-            
+
         except Exception as e:
             logger.error(f"Streaming error for session {session_id}: {e}")
             error_event = {
@@ -324,9 +352,9 @@ async def analyze_competitor_stream(request: AnalysisRequest):
             async def cleanup():
                 await asyncio.sleep(300)  # Keep session for 5 minutes
                 streaming_sessions.pop(session_id, None)
-            
+
             asyncio.create_task(cleanup())
-    
+
     return StreamingResponse(
         generate_stream(),
         media_type="text/plain",
@@ -338,6 +366,8 @@ async def analyze_competitor_stream(request: AnalysisRequest):
     )
 
 # Get active sessions
+
+
 @app.get("/sessions")
 async def get_active_sessions():
     """Get information about active streaming sessions"""
@@ -355,15 +385,19 @@ async def get_active_sessions():
     }
 
 # Get session details
+
+
 @app.get("/sessions/{session_id}")
 async def get_session_details(session_id: str):
     """Get details for a specific session"""
     if session_id not in streaming_sessions:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     return streaming_sessions[session_id]
 
 # Demo scenarios endpoint
+
+
 @app.get("/demo-scenarios")
 async def get_demo_scenarios():
     """Get available demo scenarios for testing"""
@@ -387,11 +421,65 @@ async def get_demo_scenarios():
             "description": "Collaborative design"
         }
     ]
-    
+
     return {
         "scenarios": scenarios,
         "timestamp": datetime.now().isoformat()
     }
+
+# Cache management endpoints
+
+
+@app.get("/cache/stats")
+async def get_cache_stats():
+    """Get detailed cache statistics"""
+    cache = get_cache()
+    return cache.get_cache_stats()
+
+
+@app.delete("/cache/competitor/{competitor_name}")
+async def clear_competitor_cache(competitor_name: str):
+    """Clear cache for a specific competitor"""
+    cache = get_cache()
+    deleted_count = cache.clear_competitor_cache(competitor_name)
+
+    return {
+        "message": f"Cleared cache for {competitor_name}",
+        "deleted_entries": deleted_count,
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@app.post("/cache/refresh/{competitor_name}")
+async def refresh_competitor_analysis(competitor_name: str, competitor_website: str = None):
+    """Force refresh analysis for a competitor (clears cache and re-analyzes)"""
+    try:
+        cache = get_cache()
+
+        # Clear existing cache
+        deleted_count = cache.clear_competitor_cache(competitor_name)
+
+        # Run fresh analysis
+        intelligence_system = MultiAgentCompetitiveIntelligence()
+        result = intelligence_system.run_competitive_intelligence_workflow(
+            competitor_name=competitor_name,
+            competitor_website=competitor_website
+        )
+
+        if result["status"] == "error":
+            raise HTTPException(status_code=500, detail=result.get(
+                "error", "Analysis failed"))
+
+        return {
+            "message": f"Refreshed analysis for {competitor_name}",
+            "cleared_entries": deleted_count,
+            "new_analysis": result,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Cache refresh failed for {competitor_name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     # Run the API server
