@@ -10,7 +10,7 @@ export default function LandingPage({ onAnalyze }: LandingPageProps) {
 
   return (
     <div 
-      className="min-h-screen"
+      className="h-screen overflow-hidden"
       style={{ 
         backgroundColor: '#0a0a0a',
         fontFamily: 'Inter, sans-serif'
@@ -28,16 +28,17 @@ export default function LandingPage({ onAnalyze }: LandingPageProps) {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="flex-shrink-0">
-              <h1 
+                <h1 
                 className="text-xl font-bold"
                 style={{ 
                   fontSize: '18px', 
                   fontWeight: 700, 
                   color: '#f9f9f9',
-                  fontFamily: 'Inter, sans-serif'
+                  fontFamily: 'Inter, sans-serif',
+                  textShadow: '0 0 10px #facc15, 0 0 20px #facc15, 0 0 30px #facc15'
                 }}
               >
-                CompanyIntel
+                <span style={{ color: '#facc15' }}>I</span>nfo-Ninja
               </h1>
             </div>
 
@@ -63,9 +64,9 @@ export default function LandingPage({ onAnalyze }: LandingPageProps) {
       </nav>
 
       {/* Hero Section */}
-      <main className="pt-16">
+      <main className="pt-16 h-full overflow-hidden">
         <section 
-          className="px-4 sm:px-6 lg:px-8 py-20 lg:py-32 relative overflow-hidden"
+          className="px-4 sm:px-6 lg:px-8 py-20 lg:py-32 relative h-full overflow-hidden"
           style={{
             background: 'linear-gradient(135deg, #0a0a0a 0%, #111111 100%)'
           }}
@@ -113,6 +114,11 @@ export default function LandingPage({ onAnalyze }: LandingPageProps) {
               <span style={{ color: '#facc15' }}>AI Agents</span>
             </h1>
 
+            {/* Search Card */}
+            <div className="mb-8">
+              <CompanySearchCard onAnalyze={onAnalyze} />
+            </div>
+
             {/* Muted Subtitle */}
             <p 
               className="text-xl mb-12 max-w-2xl mx-auto"
@@ -121,41 +127,16 @@ export default function LandingPage({ onAnalyze }: LandingPageProps) {
                 fontWeight: 400,
                 color: '#a1a1aa',
                 lineHeight: 1.4,
-                marginBottom: '64px'
+                marginBottom: '32px'
               }}
             >
               Get comprehensive competitive intelligence in minutes, not weeks. Our multi-agent AI system 
               researches, analyzes, and delivers executive-ready insights automatically.
             </p>
-
-            {/* Search Card */}
-            <div className="mb-16">
-              <CompanySearchCard onAnalyze={onAnalyze} />
-            </div>
           </div>
         </section>
 
 
-        {/* Footer */}
-        <footer 
-          className="px-4 sm:px-6 lg:px-8 py-12 border-t"
-          style={{ 
-            backgroundColor: '#0a0a0a', 
-            borderColor: '#262626' 
-          }}
-        >
-          <div className="max-w-6xl mx-auto text-center">
-            <p 
-              style={{ 
-                fontSize: '14px', 
-                fontWeight: 400,
-                color: '#a1a1aa'
-              }}
-            >
-              © 2024 CompanyIntel. All rights reserved.
-            </p>
-          </div>
-        </footer>
       </main>
     </div>
   )
