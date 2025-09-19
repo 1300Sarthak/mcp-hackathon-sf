@@ -32,7 +32,7 @@ A FastAPI-based RESTful API for competitive intelligence analysis using speciali
 
 ```bash
 # Install FastAPI and related dependencies
-pip install -r requirements-api.txt
+pip install -r requirements.txt
 
 # Ensure your existing strands environment is set up
 # (strands, strands-tools, litellm should already be installed)
@@ -371,3 +371,5 @@ uvicorn app:app --log-level debug
 ## License
 
 [Your license here]
+
+## Enhanced By: Sarthak, Tanzil, Edwin, Samson
