@@ -1,12 +1,19 @@
+import { useState } from 'react'
 import CompanySearchCard from './CompanySearchCard'
+import AnalysisModeToggle, { AnalysisMode } from './AnalysisModeToggle'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 
 interface LandingPageProps {
-  onAnalyze: (opts: { company: string; url?: string; section: string }) => void
+  onAnalyze: (opts: { company: string; url?: string; section: string; analysisMode?: AnalysisMode }) => void
 }
 
 export default function LandingPage({ onAnalyze }: LandingPageProps) {
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('simple')
+
+  const handleAnalyze = (opts: { company: string; url?: string; section: string }) => {
+    onAnalyze({ ...opts, analysisMode })
+  }
 
   return (
     <div 
@@ -114,9 +121,17 @@ export default function LandingPage({ onAnalyze }: LandingPageProps) {
               <span style={{ color: '#facc15' }}>AI Agents</span>
             </h1>
 
+            {/* Analysis Mode Toggle */}
+            <div className="mb-6 flex justify-center">
+              <AnalysisModeToggle 
+                mode={analysisMode} 
+                onChange={setAnalysisMode}
+              />
+            </div>
+
             {/* Search Card */}
             <div className="mb-8">
-              <CompanySearchCard onAnalyze={onAnalyze} />
+              <CompanySearchCard onAnalyze={handleAnalyze} />
             </div>
 
             {/* Muted Subtitle */}
