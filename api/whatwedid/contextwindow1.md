@@ -214,9 +214,144 @@ To enable full functionality, add real keys to `/Users/samsonxu/mcp-hackathon-sf
 4. `api/ci_agent.py` - Added dotenv loading + Bright Data configuration
 5. `api/.env` - Updated with proper Bright Data zone settings
 
+## Data Visualization System (ADDED)
+
+### Problem Solved
+The original system returned only text-based analysis which was hard to digest and not executive-ready. Added comprehensive data visualization to transform competitive intelligence into interactive charts and dashboards.
+
+### Implementation Details
+
+#### 1. Backend Data Extraction Enhancement
+**Modified AI Agent Prompts** (`ci_agent.py`):
+```python
+ANALYST_PROMPT = """...
+IMPORTANT: Structure your response with these EXACT sections for data extraction:
+
+## METRICS
+- Competitive Threat Level: [1-5]
+- Market Position Score: [1-10]
+- Innovation Score: [1-10]
+- Financial Strength: [1-10]
+- Brand Recognition: [1-10]
+
+## SWOT SCORES
+- Strengths: [1-10]
+- Weaknesses: [1-10] 
+- Opportunities: [1-10]
+- Threats: [1-10]
+..."""
+```
+
+**Added Metrics Extraction Function**:
+```python
+def extract_metrics_from_analysis(analysis_text: str) -> Dict[str, Any]:
+    """Extract structured metrics from AI analysis text"""
+    # Uses regex to parse competitive metrics and SWOT scores
+    # Returns structured data for visualization
+```
+
+**Enhanced API Response Model** (`app.py`):
+```python
+class AnalysisResponse(BaseModel):
+    # ... existing fields ...
+    metrics: Optional[Dict[str, Any]] = None  # NEW FIELD
+```
+
+#### 2. Frontend Visualization Components
+**Installed Recharts**: `npm install recharts`
+
+**Created CompetitiveDashboard.tsx**:
+- **Chart Types Implemented**:
+  - Bar Charts (competitive metrics overview)
+  - Pie Charts (SWOT analysis breakdown)  
+  - Radial Gauge (threat level indicator)
+  - Metric Cards (key performance indicators)
+  - Horizontal Bar Charts (SWOT comparison)
+
+**Enhanced CompetitiveIntelligenceForm.tsx**:
+- Added metrics interface types
+- Integrated dashboard component above text reports
+- Real-time chart updates during analysis
+
+#### 3. Data Structure
+```typescript
+interface AnalysisResult {
+  // ... existing fields ...
+  metrics?: {
+    competitive_metrics?: {
+      threat_level?: number        // 1-5 scale
+      market_position?: number     // 1-10 scale
+      innovation?: number          // 1-10 scale
+      financial_strength?: number  // 1-10 scale
+      brand_recognition?: number   // 1-10 scale
+    }
+    swot_scores?: {
+      strengths?: number           // 1-10 scale
+      weaknesses?: number          // 1-10 scale
+      opportunities?: number       // 1-10 scale
+      threats?: number             // 1-10 scale
+    }
+  }
+}
+```
+
+### Visual Features
+- **Color-Coded Threat Levels**: Green (Low 1-2), Yellow (Medium 3), Red (High 4-5)
+- **Interactive Tooltips**: Hover for detailed information
+- **Responsive Design**: Works on all device sizes
+- **Professional Styling**: Consistent with existing Tailwind CSS
+- **Real-Time Updates**: Charts populate as analysis completes
+
+### Chart Types & Business Value
+
+1. **Competitive Metrics Bar Chart**
+   - Visual comparison of market position, innovation, financial strength, brand recognition
+   - Easy executive-level overview
+
+2. **SWOT Analysis Pie Chart** 
+   - Immediate visual breakdown of company strengths vs. weaknesses
+   - Color-coded for quick insight
+
+3. **Threat Level Gauge**
+   - Radial progress indicator for competitive threat (1-5 scale)
+   - Color changes based on threat level for immediate assessment
+
+4. **Metric Cards Dashboard**
+   - Key numbers displayed with professional icons
+   - Quick scanning of competitor strengths
+
+5. **SWOT Scores Comparison**
+   - Horizontal bar chart showing relative SWOT element strength
+   - Identifies dominant strategic factors
+
+### Files Modified/Created
+
+**Backend Changes**:
+1. `api/ci_agent.py` - Enhanced prompts + metrics extraction
+2. `api/app.py` - Updated response model
+
+**Frontend Additions**:
+1. `ci-agent-ui/src/components/CompetitiveDashboard.tsx` - NEW (main dashboard)
+2. `ci-agent-ui/src/components/DashboardDemo.tsx` - NEW (demo component)
+3. `ci-agent-ui/src/components/CompetitiveIntelligenceForm.tsx` - Enhanced with dashboard
+4. `package.json` - Added recharts dependency
+
+### Business Impact Transformation
+
+**Before**: Text wall → hard to digest → not executive-ready
+**After**: Interactive visuals → immediate insights → board-presentation ready
+
+**Key Benefits**:
+- **Immediate Insight**: Threat level visible at a glance
+- **Comparative Analysis**: Easy competitor strength/weakness identification
+- **Executive Ready**: Professional charts for presentations  
+- **Actionable Data**: Visual patterns reveal strategic opportunities
+
 ## Notes
 - System works with placeholder keys (for basic testing)
 - Real competitive intelligence requires actual API keys
 - No hardcoded company data - completely dynamic analysis
 - Frontend streams real-time updates from backend during analysis
 - Bright Data zone set to "datacenter" (most reliable)
+- **NEW**: Interactive visualization dashboard transforms text analysis into executive-ready charts
+- **NEW**: Structured metrics extraction from AI responses enables quantified competitive intelligence
