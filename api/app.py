@@ -39,13 +39,13 @@ async def lifespan(app: FastAPI):
     """Manage application lifespan"""
     logger.info("🚀 Starting Multi-Agent Competitive Intelligence API")
     
-    # Test environment setup on startup
+    # Test environment setup on startup (non-blocking)
     try:
         get_gemini_model()
         logger.info("✅ Gemini model configuration verified")
     except Exception as e:
-        logger.error(f"❌ Environment setup failed: {e}")
-        raise
+        logger.warning(f"⚠️ Environment setup incomplete: {e}")
+        logger.info("💡 Add real API keys to api/.env to enable full functionality")
     
     yield
     
