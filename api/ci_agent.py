@@ -13,6 +13,10 @@ from strands.models.litellm import LiteLLMModel
 from strands_tools import bright_data
 import asyncio
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env if present
+load_dotenv()
 
 # Configure logging
 logging.getLogger("strands").setLevel(logging.INFO)  # Reduced debug noise

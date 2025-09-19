@@ -35,7 +35,7 @@
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/brightdata/competitive-intelligence.git
+git clone https://github.com/1300Sarthak/mcp-hackathon-sf.git
 cd competitive-intelligence
 ```
 

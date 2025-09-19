@@ -16,6 +16,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 import uvicorn
+from dotenv import load_dotenv
+
+# Load environment variables from .env if present
+load_dotenv()
 
 # Import our competitive intelligence system
 from ci_agent import MultiAgentCompetitiveIntelligence, get_gemini_model
