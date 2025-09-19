@@ -86,9 +86,9 @@ interface CompetitiveIntelligenceFormProps {
   initialUrl?: string
 }
 
-export default function CompetitiveIntelligenceForm({ 
-  initialCompany = '', 
-  initialUrl = '' 
+export default function CompetitiveIntelligenceForm({
+  initialCompany = '',
+  initialUrl = ''
 }: CompetitiveIntelligenceFormProps = {}) {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -115,7 +115,7 @@ export default function CompetitiveIntelligenceForm({
         })
       }, 100)
     }
-  }, [initialCompany, initialUrl])
+  }, [initialCompany, initialUrl, isAnalyzing, analysisResult])
 
   const analyzeCompetitor = async (values: FormValues) => {
     setIsAnalyzing(true)

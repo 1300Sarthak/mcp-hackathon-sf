@@ -123,23 +123,12 @@ export default function CompanySearchCard({ onAnalyze }: CompanySearchCardProps)
                 <SelectItem 
                   key={sectionOption} 
                   value={sectionOption}
-                  className="cursor-pointer transition-colors duration-200 focus:bg-transparent data-[highlighted]:bg-transparent"
-                  style={{ 
-                    color: '#f9f9f9',
-                    fontFamily: 'Inter, sans-serif',
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    margin: '2px',
-                    backgroundColor: 'transparent'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#facc1520'
-                    e.currentTarget.style.color = '#facc15'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                    e.currentTarget.style.color = '#f9f9f9'
-                  }}
+                  className="
+                    cursor-pointer transition-colors duration-200
+                    focus:bg-transparent data-[highlighted]:bg-transparent
+                    text-[#f9f9f9] font-sans px-3 py-2 rounded-md m-0.5 bg-transparent
+                    hover:bg-[#facc1520] hover:text-[#facc15]
+                  "
                 >
                   <span className="block">{sectionOption}</span>
                 </SelectItem>
