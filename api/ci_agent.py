@@ -15,6 +15,7 @@ import functools
 import asyncio
 from datetime import datetime
 from dotenv import load_dotenv
+from redis_cache import get_cache
 
 # Load environment variables from .env if present
 load_dotenv()
@@ -26,91 +27,107 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
+
 def get_gemini_model():
     """Configure Gemini model using LiteLLM"""
-    
+
     gemini_api_key = os.getenv("GEMINI_API_KEY")
     gemini_model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-2.0-flash")
-    
+
     if not gemini_api_key:
         raise ValueError("GEMINI_API_KEY not found in environment variables")
-    
+
     print(f"🔧 Configuring Gemini Model: {gemini_model_name}")
-    
+
     model = LiteLLMModel(
         client_args={"api_key": gemini_api_key},
         model_id=f"gemini/{gemini_model_name}",
         params={"max_tokens": 4000, "temperature": 0.3}
     )
-    
+
     return model
+
 
 def get_configured_bright_data():
     """Configure Bright Data tool with proper zone settings"""
-    
+
     # Set environment variables for Bright Data if they're missing
     if not os.getenv("BRIGHTDATA_ZONE"):
         os.environ["BRIGHTDATA_ZONE"] = "datacenter"
-    
+
     if not os.getenv("BRIGHTDATA_USERNAME") and os.getenv("BRIGHTDATA_API_KEY"):
         # For API key auth, username can be set to a default
         os.environ["BRIGHTDATA_USERNAME"] = "api_user"
-    
+
     return bright_data
+
 
 def extract_metrics_from_analysis(analysis_text: str) -> Dict[str, Any]:
     """Extract structured metrics from AI analysis text"""
     import re
-    
+
     metrics = {
         "competitive_metrics": {},
         "swot_scores": {},
         "raw_analysis": analysis_text
     }
-    
+
     try:
         # Extract competitive metrics
-        threat_match = re.search(r'Competitive Threat Level:\s*(\d+)', analysis_text)
+        threat_match = re.search(
+            r'Competitive Threat Level:\s*(\d+)', analysis_text)
         if threat_match:
-            metrics["competitive_metrics"]["threat_level"] = int(threat_match.group(1))
-            
-        market_match = re.search(r'Market Position Score:\s*(\d+)', analysis_text)
+            metrics["competitive_metrics"]["threat_level"] = int(
+                threat_match.group(1))
+
+        market_match = re.search(
+            r'Market Position Score:\s*(\d+)', analysis_text)
         if market_match:
-            metrics["competitive_metrics"]["market_position"] = int(market_match.group(1))
-            
-        innovation_match = re.search(r'Innovation Score:\s*(\d+)', analysis_text)
+            metrics["competitive_metrics"]["market_position"] = int(
+                market_match.group(1))
+
+        innovation_match = re.search(
+            r'Innovation Score:\s*(\d+)', analysis_text)
         if innovation_match:
-            metrics["competitive_metrics"]["innovation"] = int(innovation_match.group(1))
-            
-        financial_match = re.search(r'Financial Strength:\s*(\d+)', analysis_text)
+            metrics["competitive_metrics"]["innovation"] = int(
+                innovation_match.group(1))
+
+        financial_match = re.search(
+            r'Financial Strength:\s*(\d+)', analysis_text)
         if financial_match:
-            metrics["competitive_metrics"]["financial_strength"] = int(financial_match.group(1))
-            
+            metrics["competitive_metrics"]["financial_strength"] = int(
+                financial_match.group(1))
+
         brand_match = re.search(r'Brand Recognition:\s*(\d+)', analysis_text)
         if brand_match:
-            metrics["competitive_metrics"]["brand_recognition"] = int(brand_match.group(1))
-        
+            metrics["competitive_metrics"]["brand_recognition"] = int(
+                brand_match.group(1))
+
         # Extract SWOT scores
         strengths_match = re.search(r'Strengths:\s*(\d+)', analysis_text)
         if strengths_match:
             metrics["swot_scores"]["strengths"] = int(strengths_match.group(1))
-            
+
         weaknesses_match = re.search(r'Weaknesses:\s*(\d+)', analysis_text)
         if weaknesses_match:
-            metrics["swot_scores"]["weaknesses"] = int(weaknesses_match.group(1))
-            
-        opportunities_match = re.search(r'Opportunities:\s*(\d+)', analysis_text)
+            metrics["swot_scores"]["weaknesses"] = int(
+                weaknesses_match.group(1))
+
+        opportunities_match = re.search(
+            r'Opportunities:\s*(\d+)', analysis_text)
         if opportunities_match:
-            metrics["swot_scores"]["opportunities"] = int(opportunities_match.group(1))
-            
+            metrics["swot_scores"]["opportunities"] = int(
+                opportunities_match.group(1))
+
         threats_match = re.search(r'Threats:\s*(\d+)', analysis_text)
         if threats_match:
             metrics["swot_scores"]["threats"] = int(threats_match.group(1))
-            
+
     except Exception as e:
         print(f"⚠️ Metrics extraction failed: {e}")
-        
+
     return metrics
+
 
 # Agent System Prompts
 RESEARCHER_PROMPT = """You are a Researcher Agent specialized in competitive intelligence data gathering.
@@ -187,12 +204,13 @@ Keep reports under 700 words, professional tone, with brief source mentions.
 Focus on actionable intelligence for decision-makers.
 """
 
+
 class StreamingCallbackHandler:
     """Callback handler for streaming tool calls and responses"""
-    
+
     def __init__(self, stream_callback: Optional[Callable] = None):
         self.stream_callback = stream_callback
-        
+
     def __call__(self, **kwargs):
         """Handle streaming callbacks"""
         if self.stream_callback:
@@ -202,7 +220,7 @@ class StreamingCallbackHandler:
                     "timestamp": datetime.now().isoformat(),
                     "type": "tool_call",
                 }
-                
+
                 # Safely extract tool information
                 if "current_tool_use" in kwargs:
                     tool = kwargs.get("current_tool_use", {})
@@ -220,13 +238,13 @@ class StreamingCallbackHandler:
                     else:
                         event["tool_name"] = str(tool)
                         event["tool_input"] = {}
-                
+
                 # Add safe data - only include serializable items
                 safe_data = {}
                 for key, value in kwargs.items():
                     if key == "current_tool_use":
                         continue  # Already handled above
-                    
+
                     # Only include JSON serializable data
                     if isinstance(value, (dict, list, str, int, float, bool, type(None))):
                         try:
@@ -236,13 +254,13 @@ class StreamingCallbackHandler:
                             safe_data[key] = str(value)
                     else:
                         safe_data[key] = str(value)
-                
+
                 if safe_data:
                     event["data"] = safe_data
-                
+
                 # Send to stream callback
                 self.stream_callback(event)
-                
+
             except Exception as e:
                 # Fallback event if something goes wrong
                 error_event = {
@@ -253,17 +271,19 @@ class StreamingCallbackHandler:
                 }
                 self.stream_callback(error_event)
 
+
 class MultiAgentCompetitiveIntelligence:
     """Multi-Agent Competitive Intelligence Workflow"""
-    
+
     def __init__(self, stream_callback: Optional[Callable] = None):
         """Initialize specialized agents with enhanced error handling and streaming"""
         try:
             gemini_model = get_gemini_model()
-            
+
             # Create callback handler for streaming
-            callback_handler = StreamingCallbackHandler(stream_callback) if stream_callback else None
-            
+            callback_handler = StreamingCallbackHandler(
+                stream_callback) if stream_callback else None
+
             # Researcher Agent with web capabilities
             configured_bright_data = get_configured_bright_data()
             self.researcher_agent = Agent(
@@ -272,34 +292,34 @@ class MultiAgentCompetitiveIntelligence:
                 tools=[configured_bright_data],
                 callback_handler=callback_handler
             )
-            
+
             # Analyst Agent for competitive analysis
             self.analyst_agent = Agent(
                 model=gemini_model,
                 system_prompt=ANALYST_PROMPT,
                 callback_handler=callback_handler
             )
-            
+
             # Writer Agent for final report creation
             self.writer_agent = Agent(
                 model=gemini_model,
                 system_prompt=WRITER_PROMPT,
                 callback_handler=callback_handler
             )
-            
+
             self.stream_callback = stream_callback
-            
+
             if not stream_callback:  # Only print if not in API mode
                 print("✅ Multi-agent workflow initialized successfully!")
                 print("   📊 Researcher Agent: Data gathering and web scraping")
-                print("   🔍 Analyst Agent: Strategic analysis and threat assessment") 
+                print("   🔍 Analyst Agent: Strategic analysis and threat assessment")
                 print("   📝 Writer Agent: Report generation and recommendations")
-            
+
         except Exception as e:
             if not stream_callback:
                 print(f"❌ Multi-agent initialization failed: {e}")
             raise
-    
+
     def _send_status_update(self, message: str, step: str = "info"):
         """Send status update through stream if available"""
         if self.stream_callback:
@@ -315,15 +335,29 @@ class MultiAgentCompetitiveIntelligence:
 
     def run_competitive_intelligence_workflow(self, competitor_name: str, competitor_website: str = None) -> Dict[str, Any]:
         """
-        Multi-agent competitive intelligence workflow
+        Multi-agent competitive intelligence workflow with Redis caching
         """
-        self._send_status_update(f"\n🎯 Starting Multi-Agent Analysis for: {competitor_name}", "start")
+        cache = get_cache()
+
+        # Check if we have cached analysis for this competitor
+        cached_analysis = cache.get_analysis(
+            competitor_name, competitor_website)
+        if cached_analysis:
+            self._send_status_update(
+                f"🎯 Found cached analysis for: {competitor_name}", "cache_hit")
+            self._send_status_update(
+                "✅ Returning cached competitive intelligence", "cache_complete")
+            return cached_analysis
+
+        self._send_status_update(
+            f"\n🎯 Starting Multi-Agent Analysis for: {competitor_name}", "start")
         self._send_status_update("=" * 60)
-        
+
         try:
             # Step 1: Researcher Agent gathers comprehensive data
-            self._send_status_update("\n📊 Step 1: Researcher Agent gathering competitive intelligence...", "research_start")
-            
+            self._send_status_update(
+                "\n📊 Step 1: Researcher Agent gathering competitive intelligence...", "research_start")
+
             research_query = f"""Research competitive intelligence for "{competitor_name}".
             
             {'Website: ' + competitor_website if competitor_website else ''}
@@ -337,15 +371,18 @@ class MultiAgentCompetitiveIntelligence:
             
             Use your tools to collect detailed, factual information from multiple sources.
             """
-            
+
             researcher_response = self.researcher_agent(research_query)
             research_findings = str(researcher_response)
-            self._send_status_update("✅ Research complete", "research_complete")
-            
+            self._send_status_update(
+                "✅ Research complete", "research_complete")
+
             # Step 2: Analyst Agent performs strategic analysis
-            self._send_status_update("\n🔍 Step 2: Analyst Agent performing strategic analysis...", "analysis_start")
-            self._send_status_update("Analyzing competitive positioning and threats...")
-            
+            self._send_status_update(
+                "\n🔍 Step 2: Analyst Agent performing strategic analysis...", "analysis_start")
+            self._send_status_update(
+                "Analyzing competitive positioning and threats...")
+
             analysis_query = f"""Analyze these competitive intelligence findings for "{competitor_name}":
 
             {research_findings}
@@ -359,18 +396,21 @@ class MultiAgentCompetitiveIntelligence:
             
             Focus on actionable insights and strategic implications.
             """
-            
+
             analyst_response = self.analyst_agent(analysis_query)
             strategic_analysis = str(analyst_response)
-            
+
             # Extract structured metrics from analysis
-            extracted_metrics = extract_metrics_from_analysis(strategic_analysis)
-            
-            self._send_status_update("✅ Strategic analysis complete", "analysis_complete")
-            
+            extracted_metrics = extract_metrics_from_analysis(
+                strategic_analysis)
+
+            self._send_status_update(
+                "✅ Strategic analysis complete", "analysis_complete")
+
             # Step 3: Writer Agent creates final report
-            self._send_status_update("\n📝 Step 3: Writer Agent generating comprehensive report...", "report_start")
-            
+            self._send_status_update(
+                "\n📝 Step 3: Writer Agent generating comprehensive report...", "report_start")
+
             report_query = f"""Create a comprehensive competitive intelligence report for "{competitor_name}" based on this analysis:
 
             RESEARCH FINDINGS:
@@ -388,15 +428,16 @@ class MultiAgentCompetitiveIntelligence:
             
             Focus on actionable intelligence for decision-makers.
             """
-            
+
             final_report = self.writer_agent(report_query)
-            
+
             self._send_status_update("\n" + "=" * 60, "complete")
-            self._send_status_update("✅ Multi-Agent Analysis Complete!", "complete")
+            self._send_status_update(
+                "✅ Multi-Agent Analysis Complete!", "complete")
             self._send_status_update("=" * 60)
-            
-            # Return comprehensive results with extracted metrics
-            return {
+
+            # Prepare comprehensive results with extracted metrics
+            result = {
                 "competitor": competitor_name,
                 "website": competitor_website,
                 "research_findings": research_findings,
@@ -407,11 +448,21 @@ class MultiAgentCompetitiveIntelligence:
                 "status": "success",
                 "workflow": "multi_agent"
             }
-            
+
+            # Cache the successful analysis
+            cache_success = cache.set_analysis(
+                competitor_name, result, competitor_website)
+            if cache_success:
+                self._send_status_update(
+                    "💾 Analysis cached for future use", "cache_stored")
+
+            return result
+
         except Exception as e:
             error_msg = str(e)
-            self._send_status_update(f"\n❌ Multi-agent workflow failed: {error_msg}", "error")
-            
+            self._send_status_update(
+                f"\n❌ Multi-agent workflow failed: {error_msg}", "error")
+
             # Return error with any partial results
             return {
                 "competitor": competitor_name,
@@ -422,6 +473,7 @@ class MultiAgentCompetitiveIntelligence:
                 "workflow": "multi_agent"
             }
 
+
 def safe_get(dictionary: Union[Dict, str, Any], key: str, default: Any = None) -> Any:
     """Safely get value from dictionary, handling edge cases"""
     if isinstance(dictionary, dict):
@@ -429,17 +481,18 @@ def safe_get(dictionary: Union[Dict, str, Any], key: str, default: Any = None) -
     else:
         return default
 
+
 def main():
     """Main demo function with multi-agent workflow"""
-    
+
     print("🚀 Multi-Agent Competitive Intelligence Demo")
     print("   Strands Agents + Bright Data + Gemini")
     print("=" * 70)
-    
+
     try:
         print("\n🔧 Initializing multi-agent workflow...")
         intelligence_system = MultiAgentCompetitiveIntelligence()
-        
+
     except ValueError as e:
         print(f"\n❌ Configuration Error: {e}")
         print("\nRequired Environment Variables:")
@@ -450,63 +503,72 @@ def main():
     except Exception as e:
         print(f"\n❌ Initialization failed: {e}")
         return
-    
+
     demo_scenarios = [
-        {"name": "Oxylabs", "website": "https://oxylabs.io", "description": "Enterprise communication"},
-        {"name": "Notion", "website": "https://notion.so", "description": "All-in-one workspace"},
-        {"name": "Figma", "website": "https://figma.com", "description": "Collaborative design"}
+        {"name": "Oxylabs", "website": "https://oxylabs.io",
+            "description": "Enterprise communication"},
+        {"name": "Notion", "website": "https://notion.so",
+            "description": "All-in-one workspace"},
+        {"name": "Figma", "website": "https://figma.com",
+            "description": "Collaborative design"}
     ]
-    
+
     print("\nDemo Scenarios (Multi-Agent Workflow):")
     for i, scenario in enumerate(demo_scenarios, 1):
         print(f"{i}. {scenario['name']} - {scenario['description']}")
-    
+
     print("\nOptions:")
     print("- Enter 1-3 to run a demo scenario with multi-agent workflow")
     print("- Enter custom company name for multi-agent analysis")
     print("- Enter 'quit' to exit")
     print("\n🤖 Each analysis uses 3 specialized agents:")
     print("   📊 Researcher → 🔍 Analyst → 📝 Writer")
-    
+
     while True:
         try:
             user_input = input("\n> ").strip()
-            
+
             if user_input.lower() in ['quit', 'exit', 'q']:
                 break
-                
+
             elif user_input in ['1', '2', '3']:
                 scenario = demo_scenarios[int(user_input) - 1]
                 result = intelligence_system.run_competitive_intelligence_workflow(
-                    scenario['name'], 
+                    scenario['name'],
                     scenario['website']
                 )
-                
+
                 # Display multi-agent results
                 if safe_get(result, 'status') == 'success':
-                    print(f"\n📊 Multi-Agent Analysis Summary for {safe_get(result, 'competitor', 'Unknown')}:")
+                    print(
+                        f"\n📊 Multi-Agent Analysis Summary for {safe_get(result, 'competitor', 'Unknown')}:")
                     print("-" * 50)
-                    print(f"Workflow: {safe_get(result, 'workflow', 'Unknown')}")
-                    print(f"Generated at: {safe_get(result, 'timestamp', 'Unknown time')}")
-                    
+                    print(
+                        f"Workflow: {safe_get(result, 'workflow', 'Unknown')}")
+                    print(
+                        f"Generated at: {safe_get(result, 'timestamp', 'Unknown time')}")
+
                     # Show final report preview
                     final_report = safe_get(result, 'final_report', '')
                     if final_report and len(final_report) > 300:
                         print(f"\n📝 Final Report Preview:\n{final_report}")
-                        print(f"\n💡 Tip: Full analysis includes research findings, strategic analysis, and comprehensive report")
+                        print(
+                            f"\n💡 Tip: Full analysis includes research findings, strategic analysis, and comprehensive report")
                     elif final_report:
                         print(f"\n📝 Final Report:\n{final_report}")
                 else:
                     error = safe_get(result, 'error', 'Unknown error')
                     print(f"\n❌ Multi-agent analysis failed: {error}")
-                
+
             else:
                 # Custom competitor analysis
                 competitor_name = user_input
-                result = intelligence_system.run_competitive_intelligence_workflow(competitor_name)
-                
+                result = intelligence_system.run_competitive_intelligence_workflow(
+                    competitor_name)
+
                 if safe_get(result, 'status') == 'success':
-                    print(f"\n📊 Multi-agent analysis completed for {competitor_name}")
+                    print(
+                        f"\n📊 Multi-agent analysis completed for {competitor_name}")
                     final_report = safe_get(result, 'final_report', '')
                     if final_report and len(final_report) > 200:
                         print(f"\n📝 Report Preview:\n{final_report}")
@@ -515,15 +577,16 @@ def main():
                 else:
                     error = safe_get(result, 'error', 'Unknown error')
                     print(f"\n❌ Multi-agent analysis failed: {error}")
-                    
+
         except KeyboardInterrupt:
             print("\n\n👋 Demo interrupted by user")
             break
         except Exception as e:
             print(f"\n⚠️  Unexpected error: {e}")
             print("Continuing...")
-    
+
     print("\n👋 Demo completed!")
+
 
 if __name__ == "__main__":
     main()
