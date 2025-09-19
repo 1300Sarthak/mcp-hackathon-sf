@@ -99,7 +99,7 @@ export default function CompetitiveIntelligenceForm({
         })
       }, 100)
     }
-  }, [initialCompany, initialUrl])
+  }, [initialCompany, initialUrl, isAnalyzing, analysisResult])
 
   const analyzeCompetitor = async (values: FormValues) => {
     setIsAnalyzing(true)
