@@ -80,6 +80,8 @@ class AnalysisRequest(BaseModel):
                                  description="Name of the competitor to analyze")
     competitor_website: Optional[str] = Field(
         None, description="Website URL of the competitor")
+    niche: str = Field(
+        "all", description="Analysis focus area (all, it, sales, marketing, finance, product, hr)")
     stream: bool = Field(
         False, description="Enable streaming for real-time updates")
 
@@ -89,6 +91,7 @@ class AnalysisRequest(BaseModel):
                 {
                     "competitor_name": "Slack",
                     "competitor_website": "https://slack.com",
+                    "niche": "all",
                     "stream": True
                 }
             ]
@@ -184,7 +187,8 @@ async def analyze_competitor(request: AnalysisRequest):
         # Run the workflow
         result = intelligence_system.run_competitive_intelligence_workflow(
             competitor_name=request.competitor_name,
-            competitor_website=request.competitor_website
+            competitor_website=request.competitor_website,
+            niche=request.niche
         )
 
         if result["status"] == "error":
@@ -255,7 +259,8 @@ async def analyze_competitor_stream(request: AnalysisRequest):
                         stream_callback)
                     result = intelligence_system.run_competitive_intelligence_workflow(
                         competitor_name=request.competitor_name,
-                        competitor_website=request.competitor_website
+                        competitor_website=request.competitor_website,
+                        niche=request.niche
                     )
 
                     # Send final result

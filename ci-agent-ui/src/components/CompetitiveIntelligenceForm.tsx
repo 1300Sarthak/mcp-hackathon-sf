@@ -18,6 +18,7 @@ import {
   FormLabel, 
   FormMessage 
 } from '@/components/ui/form'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Search, 
   Globe, 
@@ -28,7 +29,8 @@ import {
   Activity,
   Brain,
   FileText,
-  Loader2
+  Loader2,
+  Target
 } from 'lucide-react'
 import DemoScenarios from './DemoScenarios'
 import Header from './Header'
@@ -39,6 +41,7 @@ import CompetitiveDashboard from './CompetitiveDashboard'
 const formSchema = z.object({
   companyName: z.string().min(1, "Company name is required").max(100, "Company name too long"),
   companyUrl: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+  niche: z.string().min(1, "Please select an analysis focus"),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -84,11 +87,13 @@ const API_BASE_URL = 'http://localhost:8000'
 interface CompetitiveIntelligenceFormProps {
   initialCompany?: string
   initialUrl?: string
+  initialNiche?: string
 }
 
 export default function CompetitiveIntelligenceForm({
   initialCompany = '',
-  initialUrl = ''
+  initialUrl = '',
+  initialNiche = 'all'
 }: CompetitiveIntelligenceFormProps = {}) {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -101,6 +106,7 @@ export default function CompetitiveIntelligenceForm({
     defaultValues: {
       companyName: initialCompany,
       companyUrl: initialUrl,
+      niche: initialNiche,
     },
   })
 
@@ -112,6 +118,7 @@ export default function CompetitiveIntelligenceForm({
         analyzeCompetitor({
           companyName: initialCompany,
           companyUrl: initialUrl,
+          niche: initialNiche,
         })
       }, 100)
     }
@@ -134,6 +141,7 @@ export default function CompetitiveIntelligenceForm({
         body: JSON.stringify({
           competitor_name: values.companyName,
           competitor_website: values.companyUrl || undefined,
+          niche: values.niche,
           stream: true,
         }),
       })
@@ -264,50 +272,85 @@ export default function CompetitiveIntelligenceForm({
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="companyName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center space-x-2">
-                          <Building className="h-4 w-4" />
-                          <span>Company Name</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="e.g., Slack, Notion, Figma" 
-                            className="h-12"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          The name of the competitor you want to analyze
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="companyName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center space-x-2">
+                            <Building className="h-4 w-4" />
+                            <span>Company Name</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g., Slack, Notion, Figma" 
+                              className="h-12"
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            The name of the competitor you want to analyze
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="companyUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center space-x-2">
+                            <Globe className="h-4 w-4" />
+                            <span>Company URL</span>
+                            <Badge variant="secondary" className="text-xs">Optional</Badge>
+                          </FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="https://company.com" 
+                              className="h-12"
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Company website for more targeted analysis
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   <FormField
                     control={form.control}
-                    name="companyUrl"
+                    name="niche"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="flex items-center space-x-2">
-                          <Globe className="h-4 w-4" />
-                          <span>Company URL</span>
-                          <Badge variant="secondary" className="text-xs">Optional</Badge>
+                          <Target className="h-4 w-4" />
+                          <span>Analysis Focus</span>
                         </FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="https://company.com" 
-                            className="h-12"
-                            {...field} 
-                          />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="h-12">
+                              <SelectValue placeholder="Select analysis focus area" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="all">All Departments (Comprehensive)</SelectItem>
+                            <SelectItem value="it">IT & Technology</SelectItem>
+                            <SelectItem value="sales">Sales & Business Development</SelectItem>
+                            <SelectItem value="marketing">Marketing & Growth</SelectItem>
+                            <SelectItem value="finance">Finance & Operations</SelectItem>
+                            <SelectItem value="product">Product & Engineering</SelectItem>
+                            <SelectItem value="hr">HR & People Operations</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormDescription>
-                          Company website for more targeted analysis
+                          Focus the analysis on specific business functions or get comprehensive coverage
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

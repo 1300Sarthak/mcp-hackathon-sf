@@ -160,11 +160,12 @@ class RedisCache:
             logger.warning(f"⚠️ Cache delete error: {e}")
             return False
 
-    def get_analysis(self, competitor_name: str, competitor_website: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def get_analysis(self, competitor_name: str, competitor_website: Optional[str] = None, niche: str = "all") -> Optional[Dict[str, Any]]:
         """Get cached competitive analysis"""
         cache_key = self._generate_cache_key("analysis", {
             "competitor": competitor_name.lower().strip(),
-            "website": competitor_website
+            "website": competitor_website,
+            "niche": niche.lower().strip()
         })
 
         cached_result = self.get(cache_key)
@@ -173,11 +174,12 @@ class RedisCache:
         return None
 
     def set_analysis(self, competitor_name: str, analysis_result: Dict[str, Any],
-                     competitor_website: Optional[str] = None) -> bool:
+                     competitor_website: Optional[str] = None, niche: str = "all") -> bool:
         """Cache competitive analysis result"""
         cache_key = self._generate_cache_key("analysis", {
             "competitor": competitor_name.lower().strip(),
-            "website": competitor_website
+            "website": competitor_website,
+            "niche": niche.lower().strip()
         })
 
         return self.set(cache_key, analysis_result, self.analysis_ttl)

@@ -130,24 +130,109 @@ def extract_metrics_from_analysis(analysis_text: str) -> Dict[str, Any]:
 
 
 # Agent System Prompts
-RESEARCHER_PROMPT = """You are a Researcher Agent specialized in competitive intelligence data gathering.
+def get_researcher_prompt(niche: str = "all") -> str:
+    """Get niche-specific researcher prompt"""
+    base_prompt = """You are a Researcher Agent specialized in competitive intelligence data gathering.
 
 Your role:
 1. **Data Collection**: Use bright_data tool to gather comprehensive competitor information
 2. **Source Discovery**: Find recent news, funding announcements, product launches, and market data
 3. **Website Analysis**: Scrape pricing pages, product descriptions, and company information
-4. **LinkedIn Intelligence**: Get structured data about company leadership and team size
+4. **LinkedIn Intelligence**: Get structured data about company leadership and team size"""
 
+    niche_specific_focus = {
+        "all": """
 Focus on:
 - Recent company developments and announcements
 - Pricing strategy and product positioning
 - Leadership team and company structure
 - Market position and customer feedback
 - Financial information (funding, revenue estimates)
+- Technology stack and infrastructure
+- Sales and marketing strategies
+- Product development and innovation""",
+
+        "it": """
+Focus specifically on IT & Technology aspects:
+- Technology stack, infrastructure, and architecture
+- Software development practices and methodologies
+- IT security measures and compliance
+- Cloud platforms and hosting solutions
+- API integrations and technical partnerships
+- Developer tools and documentation
+- Technical team size and expertise
+- Open source contributions and technical blog posts""",
+
+        "sales": """
+Focus specifically on Sales & Business Development:
+- Sales methodology and process
+- Pricing models and revenue streams
+- Sales team structure and compensation
+- Customer acquisition costs and metrics
+- Sales tools and CRM systems
+- Partnership and channel strategies
+- Sales collateral and presentations
+- Win/loss analysis and competitive positioning""",
+
+        "marketing": """
+Focus specifically on Marketing & Growth:
+- Marketing channels and campaign strategies
+- Content marketing and SEO approach
+- Social media presence and engagement
+- Brand positioning and messaging
+- Customer acquisition funnels
+- Marketing automation tools
+- Event marketing and sponsorships
+- Influencer and partnership marketing""",
+
+        "finance": """
+Focus specifically on Finance & Operations:
+- Revenue models and financial performance
+- Funding history and investor relations
+- Operational efficiency and cost structure
+- Financial reporting and transparency
+- Procurement and vendor management
+- Risk management and compliance
+- Budgeting and resource allocation
+- Financial partnerships and integrations""",
+
+        "product": """
+Focus specifically on Product & Engineering:
+- Product roadmap and development cycle
+- Feature development and user feedback
+- Engineering practices and team structure
+- Product-market fit and user adoption
+- Technical architecture and scalability
+- User experience and design philosophy
+- Product analytics and metrics
+- Innovation and R&D investments""",
+
+        "hr": """
+Focus specifically on HR & People Operations:
+- Company culture and values
+- Hiring practices and talent acquisition
+- Employee benefits and compensation
+- Remote work and office policies
+- Training and development programs
+- Diversity, equity, and inclusion initiatives
+- Employee retention and satisfaction
+- Organizational structure and management style"""
+    }
+
+    focus_section = niche_specific_focus.get(
+        niche, niche_specific_focus["all"])
+
+    return f"""{base_prompt}
+
+{focus_section}
 
 Keep findings under 800 words and include source URLs.
 Be thorough and systematic in data collection.
 """
+
+
+# Maintain backward compatibility
+RESEARCHER_PROMPT = get_researcher_prompt("all")
 
 ANALYST_PROMPT = """You are an Analyst Agent specialized in competitive intelligence analysis.
 
@@ -288,7 +373,7 @@ class MultiAgentCompetitiveIntelligence:
             configured_bright_data = get_configured_bright_data()
             self.researcher_agent = Agent(
                 model=gemini_model,
-                system_prompt=RESEARCHER_PROMPT,
+                system_prompt=RESEARCHER_PROMPT,  # Will be updated dynamically in workflow
                 tools=[configured_bright_data],
                 callback_handler=callback_handler
             )
@@ -333,7 +418,7 @@ class MultiAgentCompetitiveIntelligence:
         else:
             print(message)
 
-    def run_competitive_intelligence_workflow(self, competitor_name: str, competitor_website: str = None) -> Dict[str, Any]:
+    def run_competitive_intelligence_workflow(self, competitor_name: str, competitor_website: str = None, niche: str = "all") -> Dict[str, Any]:
         """
         Multi-agent competitive intelligence workflow with Redis caching
         """
@@ -341,7 +426,7 @@ class MultiAgentCompetitiveIntelligence:
 
         # Check if we have cached analysis for this competitor
         cached_analysis = cache.get_analysis(
-            competitor_name, competitor_website)
+            competitor_name, competitor_website, niche)
         if cached_analysis:
             self._send_status_update(
                 f"🎯 Found cached analysis for: {competitor_name}", "cache_hit")
@@ -354,13 +439,116 @@ class MultiAgentCompetitiveIntelligence:
         self._send_status_update("=" * 60)
 
         try:
-            # Step 1: Researcher Agent gathers comprehensive data
-            self._send_status_update(
-                "\n📊 Step 1: Researcher Agent gathering competitive intelligence...", "research_start")
+            # Update researcher agent with niche-specific prompt
+            niche_prompt = get_researcher_prompt(niche)
+            self.researcher_agent.system_prompt = niche_prompt
 
-            research_query = f"""Research competitive intelligence for "{competitor_name}".
+            # Step 1: Researcher Agent gathers comprehensive data
+            niche_label = {
+                "all": "Comprehensive Analysis",
+                "it": "IT & Technology Focus",
+                "sales": "Sales & Business Development Focus",
+                "marketing": "Marketing & Growth Focus",
+                "finance": "Finance & Operations Focus",
+                "product": "Product & Engineering Focus",
+                "hr": "HR & People Operations Focus"
+            }.get(niche, f"{niche.upper()} Focus")
+
+            self._send_status_update(
+                f"\n📊 Step 1: Researcher Agent gathering competitive intelligence ({niche_label})...", "research_start")
+
+            # Create niche-specific research query
+            base_research_query = f"""Research competitive intelligence for "{competitor_name}".
             
-            {'Website: ' + competitor_website if competitor_website else ''}
+            {'Website: ' + competitor_website if competitor_website else ''}"""
+
+            # Build niche-specific queries with proper string formatting
+            if niche == "it":
+                query_focus = f"""
+            
+            Focus specifically on IT & Technology intelligence:
+            1. Technology stack, infrastructure, and cloud platforms
+            2. Software development practices and engineering team
+            3. API documentation and developer resources
+            4. Security measures and compliance certifications
+            5. Technical partnerships and integrations
+            6. Open source contributions and technical blog
+            7. IT job postings and technical requirements
+            8. Technical product features and architecture
+            
+            Search terms to prioritize: "{competitor_name} technology stack", "{competitor_name} engineering team", "{competitor_name} API documentation", "{competitor_name} security compliance\""""
+            elif niche == "sales":
+                query_focus = f"""
+            
+            Focus specifically on Sales & Business Development:
+            1. Sales methodology and process documentation
+            2. Pricing models, packages, and revenue streams
+            3. Sales team structure and job postings
+            4. Customer case studies and success stories
+            5. Partner programs and channel strategies
+            6. Sales tools and CRM integrations
+            7. Competitive positioning and win/loss data
+            8. Sales collateral and presentation materials
+            
+            Search terms to prioritize: "{competitor_name} pricing", "{competitor_name} sales team", "{competitor_name} customer case studies", "{competitor_name} partner program\""""
+            elif niche == "marketing":
+                query_focus = f"""
+            
+            Focus specifically on Marketing & Growth:
+            1. Marketing channels and campaign strategies
+            2. Content marketing and SEO performance
+            3. Social media presence and engagement metrics
+            4. Brand messaging and positioning
+            5. Customer acquisition funnels and conversion
+            6. Marketing automation and tools
+            7. Event marketing and sponsorship activities
+            8. Influencer partnerships and collaborations
+            
+            Search terms to prioritize: "{competitor_name} marketing strategy", "{competitor_name} social media", "{competitor_name} content marketing", "{competitor_name} events sponsorship\""""
+            elif niche == "finance":
+                query_focus = f"""
+            
+            Focus specifically on Finance & Operations:
+            1. Revenue models and financial performance
+            2. Funding history and investor information
+            3. Operational efficiency and cost structure
+            4. Financial reporting and transparency
+            5. Procurement processes and vendor relationships
+            6. Risk management and compliance frameworks
+            7. Budget allocation and resource planning
+            8. Financial partnerships and integrations
+            
+            Search terms to prioritize: "{competitor_name} funding", "{competitor_name} revenue model", "{competitor_name} financial performance", "{competitor_name} investors\""""
+            elif niche == "product":
+                query_focus = f"""
+            
+            Focus specifically on Product & Engineering:
+            1. Product roadmap and development cycle
+            2. Feature releases and user feedback
+            3. Engineering practices and development team
+            4. Product-market fit and user adoption metrics
+            5. Technical architecture and scalability
+            6. User experience and design philosophy
+            7. Product analytics and performance metrics
+            8. Innovation labs and R&D investments
+            
+            Search terms to prioritize: "{competitor_name} product roadmap", "{competitor_name} new features", "{competitor_name} user feedback", "{competitor_name} engineering practices\""""
+            elif niche == "hr":
+                query_focus = f"""
+            
+            Focus specifically on HR & People Operations:
+            1. Company culture and core values
+            2. Hiring practices and talent acquisition
+            3. Employee benefits and compensation packages
+            4. Remote work policies and office locations
+            5. Training and professional development programs
+            6. Diversity, equity, and inclusion initiatives
+            7. Employee satisfaction and retention rates
+            8. Organizational structure and leadership style
+            
+            Search terms to prioritize: "{competitor_name} company culture", "{competitor_name} careers benefits", "{competitor_name} diversity inclusion", "{competitor_name} employee reviews\""""
+            else:  # "all" or default
+                query_focus = """
             
             Gather comprehensive information about:
             1. Recent company news, funding, and market developments
@@ -368,6 +556,10 @@ class MultiAgentCompetitiveIntelligence:
             3. Company leadership and team structure (LinkedIn data)
             4. Market position and customer feedback
             5. Financial information and growth metrics
+            6. Technology stack and infrastructure
+            7. Sales and marketing strategies"""
+
+            research_query = base_research_query + query_focus + """
             
             Use your tools to collect detailed, factual information from multiple sources.
             """
@@ -451,7 +643,7 @@ class MultiAgentCompetitiveIntelligence:
 
             # Cache the successful analysis
             cache_success = cache.set_analysis(
-                competitor_name, result, competitor_website)
+                competitor_name, result, competitor_website, niche)
             if cache_success:
                 self._send_status_update(
                     "💾 Analysis cached for future use", "cache_stored")
