@@ -33,6 +33,7 @@ import {
 import DemoScenarios from './DemoScenarios'
 import Header from './Header'
 import MarkdownRenderer from './MarkdownRenderer'
+import CompetitiveDashboard from './CompetitiveDashboard'
 
 // Form validation schema
 const formSchema = z.object({
@@ -58,6 +59,21 @@ interface AnalysisResult {
   research_findings: string
   strategic_analysis: string
   final_report: string
+  metrics?: {
+    competitive_metrics?: {
+      threat_level?: number
+      market_position?: number
+      innovation?: number
+      financial_strength?: number
+      brand_recognition?: number
+    }
+    swot_scores?: {
+      strengths?: number
+      weaknesses?: number
+      opportunities?: number
+      threats?: number
+    }
+  }
   timestamp: string
   status: string
   workflow: string
@@ -368,7 +384,18 @@ export default function CompetitiveIntelligenceForm() {
 
               <Separator />
 
-              <div className="space-y-4">
+              <div className="space-y-6">
+                {/* Dashboard Visualization */}
+                {analysisResult.metrics && (
+                  <CompetitiveDashboard 
+                    data={{
+                      competitor: analysisResult.competitor,
+                      competitive_metrics: analysisResult.metrics.competitive_metrics,
+                      swot_scores: analysisResult.metrics.swot_scores
+                    }}
+                  />
+                )}
+
                 <div>
                   <h3 className="font-semibold text-lg mb-2">Executive Report</h3>
                   <div className="bg-gray-50 p-6 rounded-lg">

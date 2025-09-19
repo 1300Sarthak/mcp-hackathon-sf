@@ -58,6 +58,60 @@ def get_configured_bright_data():
     
     return bright_data
 
+def extract_metrics_from_analysis(analysis_text: str) -> Dict[str, Any]:
+    """Extract structured metrics from AI analysis text"""
+    import re
+    
+    metrics = {
+        "competitive_metrics": {},
+        "swot_scores": {},
+        "raw_analysis": analysis_text
+    }
+    
+    try:
+        # Extract competitive metrics
+        threat_match = re.search(r'Competitive Threat Level:\s*(\d+)', analysis_text)
+        if threat_match:
+            metrics["competitive_metrics"]["threat_level"] = int(threat_match.group(1))
+            
+        market_match = re.search(r'Market Position Score:\s*(\d+)', analysis_text)
+        if market_match:
+            metrics["competitive_metrics"]["market_position"] = int(market_match.group(1))
+            
+        innovation_match = re.search(r'Innovation Score:\s*(\d+)', analysis_text)
+        if innovation_match:
+            metrics["competitive_metrics"]["innovation"] = int(innovation_match.group(1))
+            
+        financial_match = re.search(r'Financial Strength:\s*(\d+)', analysis_text)
+        if financial_match:
+            metrics["competitive_metrics"]["financial_strength"] = int(financial_match.group(1))
+            
+        brand_match = re.search(r'Brand Recognition:\s*(\d+)', analysis_text)
+        if brand_match:
+            metrics["competitive_metrics"]["brand_recognition"] = int(brand_match.group(1))
+        
+        # Extract SWOT scores
+        strengths_match = re.search(r'Strengths:\s*(\d+)', analysis_text)
+        if strengths_match:
+            metrics["swot_scores"]["strengths"] = int(strengths_match.group(1))
+            
+        weaknesses_match = re.search(r'Weaknesses:\s*(\d+)', analysis_text)
+        if weaknesses_match:
+            metrics["swot_scores"]["weaknesses"] = int(weaknesses_match.group(1))
+            
+        opportunities_match = re.search(r'Opportunities:\s*(\d+)', analysis_text)
+        if opportunities_match:
+            metrics["swot_scores"]["opportunities"] = int(opportunities_match.group(1))
+            
+        threats_match = re.search(r'Threats:\s*(\d+)', analysis_text)
+        if threats_match:
+            metrics["swot_scores"]["threats"] = int(threats_match.group(1))
+            
+    except Exception as e:
+        print(f"⚠️ Metrics extraction failed: {e}")
+        
+    return metrics
+
 # Agent System Prompts
 RESEARCHER_PROMPT = """You are a Researcher Agent specialized in competitive intelligence data gathering.
 
@@ -86,6 +140,24 @@ Your role:
 3. **Business Model Analysis**: Understand revenue streams and value propositions
 4. **Competitive Threats**: Assess level of competitive threat and market overlap
 
+IMPORTANT: Structure your response with these EXACT sections for data extraction:
+
+## METRICS
+- Competitive Threat Level: [1-5]
+- Market Position Score: [1-10]
+- Innovation Score: [1-10]
+- Financial Strength: [1-10]
+- Brand Recognition: [1-10]
+
+## SWOT SCORES
+- Strengths: [1-10]
+- Weaknesses: [1-10] 
+- Opportunities: [1-10]
+- Threats: [1-10]
+
+## ANALYSIS
+[Your detailed analysis here]
+
 Focus on:
 - Business model and revenue strategy analysis
 - Competitive strengths and vulnerabilities
@@ -94,7 +166,6 @@ Focus on:
 - Key insights for competitive response
 
 Keep analysis under 600 words with clear, actionable insights.
-Rate competitive threat level from 1-5 and explain reasoning.
 """
 
 WRITER_PROMPT = """You are a Writer Agent specialized in competitive intelligence reporting.
@@ -291,6 +362,10 @@ class MultiAgentCompetitiveIntelligence:
             
             analyst_response = self.analyst_agent(analysis_query)
             strategic_analysis = str(analyst_response)
+            
+            # Extract structured metrics from analysis
+            extracted_metrics = extract_metrics_from_analysis(strategic_analysis)
+            
             self._send_status_update("✅ Strategic analysis complete", "analysis_complete")
             
             # Step 3: Writer Agent creates final report
@@ -320,13 +395,14 @@ class MultiAgentCompetitiveIntelligence:
             self._send_status_update("✅ Multi-Agent Analysis Complete!", "complete")
             self._send_status_update("=" * 60)
             
-            # Return comprehensive results
+            # Return comprehensive results with extracted metrics
             return {
                 "competitor": competitor_name,
                 "website": competitor_website,
                 "research_findings": research_findings,
                 "strategic_analysis": strategic_analysis,
                 "final_report": str(final_report),
+                "metrics": extracted_metrics,
                 "timestamp": datetime.now().isoformat(),
                 "status": "success",
                 "workflow": "multi_agent"

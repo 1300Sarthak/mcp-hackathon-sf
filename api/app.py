@@ -94,6 +94,7 @@ class AnalysisResponse(BaseModel):
     research_findings: str
     strategic_analysis: str
     final_report: str
+    metrics: Optional[Dict[str, Any]] = None
     timestamp: str
     status: str
     workflow: str
