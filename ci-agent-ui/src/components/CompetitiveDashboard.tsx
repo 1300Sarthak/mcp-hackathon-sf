@@ -1,4 +1,3 @@
-import React from 'react'
 import {
   RadialBarChart,
   RadialBar,
@@ -12,11 +11,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
-  LineChart,
-  Line,
-  Area,
-  AreaChart
+  Legend
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Badge } from './ui/badge'
@@ -56,26 +51,21 @@ interface CompetitiveDashboardProps {
 }
 
 const COLORS = {
-  primary: '#3B82F6',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  purple: '#8B5CF6',
-  indigo: '#6366F1',
-  pink: '#EC4899',
-  gray: '#6B7280'
+  primary: '#60A5FA',    // Brighter blue for dark theme
+  success: '#34D399',    // Brighter green for dark theme  
+  warning: '#FBBF24',    // Brighter yellow (matching accent)
+  danger: '#F87171',     // Brighter red for dark theme
+  purple: '#A78BFA',     // Brighter purple for dark theme
+  indigo: '#818CF8',     // Brighter indigo for dark theme
+  pink: '#F472B6',       // Brighter pink for dark theme
+  gray: '#9CA3AF',       // Lighter gray for dark theme
+  accent: '#FACC15'      // Main yellow accent color
 }
 
 export default function CompetitiveDashboard({ data }: CompetitiveDashboardProps) {
   const { competitor, competitive_metrics, swot_scores } = data
 
   // Prepare data for different chart types
-  const radarData = competitive_metrics ? [
-    { metric: 'Market Position', value: competitive_metrics.market_position || 0, max: 10 },
-    { metric: 'Innovation', value: competitive_metrics.innovation || 0, max: 10 },
-    { metric: 'Financial Strength', value: competitive_metrics.financial_strength || 0, max: 10 },
-    { metric: 'Brand Recognition', value: competitive_metrics.brand_recognition || 0, max: 10 }
-  ] : []
 
   const swotData = swot_scores ? [
     { name: 'Strengths', value: swot_scores.strengths || 0, color: COLORS.success },
@@ -120,11 +110,18 @@ export default function CompetitiveDashboard({ data }: CompetitiveDashboardProps
     return 'High Threat'
   }
 
-  // Custom tooltip component
+  // Custom tooltip component for dark theme
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+        <div 
+          className="p-3 border rounded-lg shadow-lg"
+          style={{
+            backgroundColor: '#1a1a1a',
+            borderColor: '#262626',
+            color: '#f9f9f9'
+          }}
+        >
           <p className="font-medium">{`${label}: ${payload[0].value}/10`}</p>
         </div>
       )
@@ -134,9 +131,9 @@ export default function CompetitiveDashboard({ data }: CompetitiveDashboardProps
 
   if (!competitive_metrics && !swot_scores) {
     return (
-      <Card>
+      <Card style={{ backgroundColor: '#1a1a1a', borderColor: '#262626' }}>
         <CardContent className="p-6">
-          <div className="text-center text-gray-500">
+          <div className="text-center" style={{ color: '#9CA3AF' }}>
             <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>No metrics available for visualization</p>
             <p className="text-sm mt-2">Run an analysis to see competitive intelligence charts</p>
@@ -151,8 +148,8 @@ export default function CompetitiveDashboard({ data }: CompetitiveDashboardProps
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Competitive Intelligence Dashboard</h2>
-          <p className="text-gray-600">Analysis for {competitor}</p>
+          <h2 className="text-2xl font-bold" style={{ color: '#f9f9f9' }}>Competitive Intelligence Dashboard</h2>
+          <p style={{ color: '#9CA3AF' }}>Analysis for {competitor}</p>
         </div>
         {competitive_metrics?.threat_level && (
           <Badge 
@@ -169,50 +166,50 @@ export default function CompetitiveDashboard({ data }: CompetitiveDashboardProps
       {/* Key Metrics Grid */}
       {competitive_metrics && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
+          <Card style={{ backgroundColor: '#1a1a1a', borderColor: '#262626' }}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Market Position</p>
-                  <p className="text-2xl font-bold">{competitive_metrics.market_position || 0}/10</p>
+                  <p className="text-sm" style={{ color: '#9CA3AF' }}>Market Position</p>
+                  <p className="text-2xl font-bold" style={{ color: '#f9f9f9' }}>{competitive_metrics.market_position || 0}/10</p>
                 </div>
-                <Target className="h-8 w-8 text-blue-600" />
+                <Target className="h-8 w-8" style={{ color: COLORS.primary }} />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card style={{ backgroundColor: '#1a1a1a', borderColor: '#262626' }}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Innovation Score</p>
-                  <p className="text-2xl font-bold">{competitive_metrics.innovation || 0}/10</p>
+                  <p className="text-sm" style={{ color: '#9CA3AF' }}>Innovation Score</p>
+                  <p className="text-2xl font-bold" style={{ color: '#f9f9f9' }}>{competitive_metrics.innovation || 0}/10</p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-purple-600" />
+                <TrendingUp className="h-8 w-8" style={{ color: COLORS.purple }} />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card style={{ backgroundColor: '#1a1a1a', borderColor: '#262626' }}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Financial Strength</p>
-                  <p className="text-2xl font-bold">{competitive_metrics.financial_strength || 0}/10</p>
+                  <p className="text-sm" style={{ color: '#9CA3AF' }}>Financial Strength</p>
+                  <p className="text-2xl font-bold" style={{ color: '#f9f9f9' }}>{competitive_metrics.financial_strength || 0}/10</p>
                 </div>
-                <Shield className="h-8 w-8 text-green-600" />
+                <Shield className="h-8 w-8" style={{ color: COLORS.success }} />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card style={{ backgroundColor: '#1a1a1a', borderColor: '#262626' }}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Brand Recognition</p>
-                  <p className="text-2xl font-bold">{competitive_metrics.brand_recognition || 0}/10</p>
+                  <p className="text-sm" style={{ color: '#9CA3AF' }}>Brand Recognition</p>
+                  <p className="text-2xl font-bold" style={{ color: '#f9f9f9' }}>{competitive_metrics.brand_recognition || 0}/10</p>
                 </div>
-                <Activity className="h-8 w-8 text-indigo-600" />
+                <Activity className="h-8 w-8" style={{ color: COLORS.indigo }} />
               </div>
             </CardContent>
           </Card>
@@ -223,25 +220,30 @@ export default function CompetitiveDashboard({ data }: CompetitiveDashboardProps
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Competitive Metrics Bar Chart */}
         {competitiveOverview.length > 0 && (
-          <Card>
+          <Card style={{ backgroundColor: '#1a1a1a', borderColor: '#262626' }}>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <BarChart3 className="h-5 w-5 mr-2 text-blue-600" />
+              <CardTitle className="flex items-center" style={{ color: '#f9f9f9' }}>
+                <BarChart3 className="h-5 w-5 mr-2" style={{ color: COLORS.primary }} />
                 Competitive Metrics Overview
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={competitiveOverview}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis 
                     dataKey="name" 
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 12, fill: '#9CA3AF' }}
                     angle={-45}
                     textAnchor="end"
                     height={60}
+                    stroke="#9CA3AF"
                   />
-                  <YAxis domain={[0, 10]} />
+                  <YAxis 
+                    domain={[0, 10]} 
+                    tick={{ fill: '#9CA3AF' }}
+                    stroke="#9CA3AF"
+                  />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -252,10 +254,10 @@ export default function CompetitiveDashboard({ data }: CompetitiveDashboardProps
 
         {/* SWOT Analysis Pie Chart */}
         {swotData.length > 0 && (
-          <Card>
+          <Card style={{ backgroundColor: '#1a1a1a', borderColor: '#262626' }}>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <PieChartIcon className="h-5 w-5 mr-2 text-purple-600" />
+              <CardTitle className="flex items-center" style={{ color: '#f9f9f9' }}>
+                <PieChartIcon className="h-5 w-5 mr-2" style={{ color: COLORS.purple }} />
                 SWOT Analysis Breakdown
               </CardTitle>
             </CardHeader>
@@ -269,13 +271,18 @@ export default function CompetitiveDashboard({ data }: CompetitiveDashboardProps
                     outerRadius={100}
                     dataKey="value"
                     label={({ name, value }) => `${name}: ${value}`}
+                    labelLine={false}
+                    style={{ fill: '#f9f9f9' }}
                   >
                     {swotData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
-                  <Legend />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend 
+                    wrapperStyle={{ color: '#f9f9f9' }}
+                    iconType="circle"
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
@@ -284,10 +291,10 @@ export default function CompetitiveDashboard({ data }: CompetitiveDashboardProps
 
         {/* Threat Level Gauge */}
         {competitive_metrics?.threat_level && (
-          <Card>
+          <Card style={{ backgroundColor: '#1a1a1a', borderColor: '#262626' }}>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <AlertTriangle className="h-5 w-5 mr-2 text-red-600" />
+              <CardTitle className="flex items-center" style={{ color: '#f9f9f9' }}>
+                <AlertTriangle className="h-5 w-5 mr-2" style={{ color: getThreatColor(threatLevel) }} />
                 Competitive Threat Level
               </CardTitle>
             </CardHeader>
@@ -301,7 +308,14 @@ export default function CompetitiveDashboard({ data }: CompetitiveDashboardProps
                   data={[{ value: (threatLevel / 5) * 100, fill: getThreatColor(threatLevel) }]}
                 >
                   <RadialBar dataKey="value" cornerRadius={30} />
-                  <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="text-2xl font-bold">
+                  <text 
+                    x="50%" 
+                    y="50%" 
+                    textAnchor="middle" 
+                    dominantBaseline="middle" 
+                    className="text-2xl font-bold"
+                    fill="#f9f9f9"
+                  >
                     {threatLevel}/5
                   </text>
                 </RadialBarChart>
@@ -321,20 +335,31 @@ export default function CompetitiveDashboard({ data }: CompetitiveDashboardProps
 
         {/* SWOT Scores Bar Chart */}
         {swotData.length > 0 && (
-          <Card>
+          <Card style={{ backgroundColor: '#1a1a1a', borderColor: '#262626' }}>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Activity className="h-5 w-5 mr-2 text-green-600" />
+              <CardTitle className="flex items-center" style={{ color: '#f9f9f9' }}>
+                <Activity className="h-5 w-5 mr-2" style={{ color: COLORS.success }} />
                 SWOT Scores Comparison
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={swotData} layout="horizontal">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" domain={[0, 10]} />
-                  <YAxis dataKey="name" type="category" width={100} />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis 
+                    type="number" 
+                    domain={[0, 10]} 
+                    tick={{ fill: '#9CA3AF' }}
+                    stroke="#9CA3AF"
+                  />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    width={100}
+                    tick={{ fill: '#9CA3AF' }}
+                    stroke="#9CA3AF"
+                  />
+                  <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                     {swotData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />

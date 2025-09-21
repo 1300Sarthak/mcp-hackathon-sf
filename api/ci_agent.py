@@ -132,91 +132,90 @@ def extract_metrics_from_analysis(analysis_text: str) -> Dict[str, Any]:
 # Agent System Prompts
 def get_researcher_prompt(niche: str = "all") -> str:
     """Get niche-specific researcher prompt"""
-    base_prompt = """You are a Researcher Agent specialized in competitive intelligence data gathering.
+    base_prompt = """You are a Researcher Agent specialized in competitive intelligence data gathering (via MCP tools, e.g., bright_data, web scrapers, LinkedIn, pricing pages).
+
+Inputs:
+- TARGET_COMPANY
+- FUNCTIONAL_FOCUS ∈ {Finance, HR, Product, Sales, Marketing, Operations, Legal, IT, Executive, All}
+- OPTIONAL: COMPARATORS, DATE_RANGE, REGION
 
 Your role:
-1. **Data Collection**: Use bright_data tool to gather comprehensive competitor information
-2. **Source Discovery**: Find recent news, funding announcements, product launches, and market data
-3. **Website Analysis**: Scrape pricing pages, product descriptions, and company information
-4. **LinkedIn Intelligence**: Get structured data about company leadership and team size"""
+1) Data Collection: Gather recent news, funding, launches, customers, pricing, partnerships, hiring, tech stack, compliance, and customer feedback from DIVERSE SOURCES.
+2) Source Discovery: Prioritize primary sources (company site, filings, newsroom, pricing, docs), high-quality media, analyst notes, job posts, Glassdoor/G2, developer repos, certifications.
+3) Department Lens: Emphasize the selected FUNCTIONAL_FOCUS with the checklist below."""
 
     niche_specific_focus = {
         "all": """
-Focus on:
-- Recent company developments and announcements
-- Pricing strategy and product positioning
-- Leadership team and company structure
-- Market position and customer feedback
-- Financial information (funding, revenue estimates)
-- Technology stack and infrastructure
-- Sales and marketing strategies
-- Product development and innovation""",
+Department checklists (comprehensive analysis):
+- Finance: revenue/funding/runway, margins, unit economics, pricing moves, key financial risks.
+- HR: headcount size/velocity, org changes, leadership hires/exits, attrition & culture signals, open roles.
+- Product: roadmap/cadence, differentiators, integrations, packaging, usage tiers, security/SLAs.
+- Sales: ICP/segments, ACV, sales motion, channels/partners, geos, win/loss themes.
+- Marketing: positioning/ICP, SOV/SEO, campaigns, events, brand assets, community.
+- Operations: supply/delivery model, uptime/SLAs, support model, scaling constraints.
+- Legal: IP, licensing, litigations, regulatory/compliance (SOC2/ISO/PCI/HIPAA/GDPR), data handling.
+- IT: stack, architecture, cloud/providers, data model, security posture, roadblocks.
+- Executive: strategy, board/investors, OKRs, geographic strategy, M&A rumors/moves.""",
 
         "it": """
-Focus specifically on IT & Technology aspects:
-- Technology stack, infrastructure, and architecture
-- Software development practices and methodologies
-- IT security measures and compliance
-- Cloud platforms and hosting solutions
-- API integrations and technical partnerships
-- Developer tools and documentation
-- Technical team size and expertise
-- Open source contributions and technical blog posts""",
+Department checklist (IT & Technology focus):
+- IT: stack, architecture, cloud/providers, data model, security posture, roadblocks.
+- Engineering practices, CI/CD, infrastructure as code, monitoring/observability.
+- Developer experience, API design, technical documentation quality.
+- Security certifications (SOC2, ISO27001, PCI), vulnerability management.
+- Technical partnerships, integrations, third-party dependencies.
+- Open source contributions, technical blog posts, engineering culture.
+- Cloud costs, technical debt, scalability bottlenecks.""",
 
         "sales": """
-Focus specifically on Sales & Business Development:
-- Sales methodology and process
-- Pricing models and revenue streams
-- Sales team structure and compensation
-- Customer acquisition costs and metrics
-- Sales tools and CRM systems
-- Partnership and channel strategies
-- Sales collateral and presentations
-- Win/loss analysis and competitive positioning""",
+Department checklist (Sales & Business Development focus):
+- Sales: ICP/segments, ACV, sales motion, channels/partners, geos, win/loss themes.
+- Sales team structure, quota attainment, sales cycle length, conversion rates.
+- Pricing strategy, discount policies, contract terms, payment models.
+- CRM systems, sales tools, lead generation, qualification processes.
+- Customer case studies, testimonials, reference customers.
+- Channel partnerships, reseller programs, indirect sales.
+- Competitive positioning, battle cards, objection handling.""",
 
         "marketing": """
-Focus specifically on Marketing & Growth:
-- Marketing channels and campaign strategies
-- Content marketing and SEO approach
-- Social media presence and engagement
-- Brand positioning and messaging
-- Customer acquisition funnels
-- Marketing automation tools
-- Event marketing and sponsorships
-- Influencer and partnership marketing""",
+Department checklist (Marketing & Growth focus):
+- Marketing: positioning/ICP, SOV/SEO, campaigns, events, brand assets, community.
+- Content strategy, thought leadership, SEO performance, organic traffic.
+- Paid advertising, CAC/LTV, attribution models, conversion funnels.
+- Social media presence, community building, developer relations.
+- Event marketing, conference sponsorships, webinar programs.
+- Brand partnerships, influencer collaborations, PR strategy.
+- Marketing automation, lead scoring, nurturing campaigns.""",
 
         "finance": """
-Focus specifically on Finance & Operations:
-- Revenue models and financial performance
-- Funding history and investor relations
-- Operational efficiency and cost structure
-- Financial reporting and transparency
-- Procurement and vendor management
-- Risk management and compliance
-- Budgeting and resource allocation
-- Financial partnerships and integrations""",
+Department checklist (Finance & Operations focus):
+- Finance: revenue/funding/runway, margins, unit economics, pricing moves, key financial risks.
+- Funding history, investor relations, board composition, valuation trends.
+- Revenue recognition, billing models, churn rates, expansion revenue.
+- Cost structure, OPEX/CAPEX, burn rate, path to profitability.
+- Financial controls, audit results, compliance frameworks.
+- Procurement processes, vendor relationships, contract negotiations.
+- Budget planning, resource allocation, financial forecasting.""",
 
         "product": """
-Focus specifically on Product & Engineering:
-- Product roadmap and development cycle
-- Feature development and user feedback
-- Engineering practices and team structure
-- Product-market fit and user adoption
-- Technical architecture and scalability
-- User experience and design philosophy
-- Product analytics and metrics
-- Innovation and R&D investments""",
+Department checklist (Product & Engineering focus):
+- Product: roadmap/cadence, differentiators, integrations, packaging, usage tiers, security/SLAs.
+- Feature release velocity, product-market fit signals, user adoption metrics.
+- User experience design, customer feedback loops, usability testing.
+- Product analytics, usage data, feature adoption, user journeys.
+- Integration ecosystem, API strategy, developer experience.
+- Product packaging, pricing tiers, feature gating, monetization.
+- R&D investments, innovation labs, emerging technology adoption.""",
 
         "hr": """
-Focus specifically on HR & People Operations:
-- Company culture and values
-- Hiring practices and talent acquisition
-- Employee benefits and compensation
-- Remote work and office policies
-- Training and development programs
-- Diversity, equity, and inclusion initiatives
-- Employee retention and satisfaction
-- Organizational structure and management style"""
+Department checklist (HR & People Operations focus):
+- HR: headcount size/velocity, org changes, leadership hires/exits, attrition & culture signals, open roles.
+- Compensation philosophy, equity programs, benefits packages.
+- Remote work policies, office locations, workplace culture.
+- Learning & development, career progression, performance management.
+- Diversity, equity, inclusion initiatives, representation metrics.
+- Employee engagement, satisfaction surveys, retention strategies.
+- Organizational design, reporting structures, team dynamics."""
     }
 
     focus_section = niche_specific_focus.get(
@@ -226,23 +225,36 @@ Focus specifically on HR & People Operations:
 
 {focus_section}
 
-Keep findings under 800 words and include source URLs.
-Be thorough and systematic in data collection.
+Deliverable (≤500 words):
+- Bulleted findings per FUNCTIONAL_FOCUS (most recent first) with inline source URLs.
+- 3–5 "Signals to Watch" tied to the focus area.
+- Date of last verification.
+
+CRITICAL: Use DIVERSE SOURCES - don't repeat the same information. Search multiple sites:
+- Company website, newsroom, blog, pricing pages
+- SEC filings, investor presentations, earnings calls
+- Job boards (LinkedIn, AngelList, company careers page)
+- Review sites (G2, Capterra, Glassdoor, TrustPilot)
+- Social media (LinkedIn, Twitter, YouTube)
+- Industry publications, analyst reports
+- Developer resources (GitHub, Stack Overflow, documentation)
+- News outlets, press releases, trade publications
 """
 
 
 # Maintain backward compatibility
 RESEARCHER_PROMPT = get_researcher_prompt("all")
 
-ANALYST_PROMPT = """You are an Analyst Agent specialized in competitive intelligence analysis.
+ANALYST_PROMPT = """You are an Analyst Agent for competitive intelligence.
+
+Inputs: Researcher Deliverable + FUNCTIONAL_FOCUS.
 
 Your role:
-1. **Strategic Analysis**: Analyze competitive positioning and market strategy
-2. **SWOT Assessment**: Identify strengths, weaknesses, opportunities, and threats
-3. **Business Model Analysis**: Understand revenue streams and value propositions
-4. **Competitive Threats**: Assess level of competitive threat and market overlap
+1) Strategic analysis by FUNCTIONAL_FOCUS (business model, revenue drivers, pricing, channels, risks).
+2) Compute and display scores (below) and perform a SWOT tied to the focus area.
+3) Keep analysis concise and actionable.
 
-IMPORTANT: Structure your response with these EXACT sections for data extraction:
+IMPORTANT — Use these EXACT sections:
 
 ## METRICS
 - Competitive Threat Level: [1-5]
@@ -258,35 +270,32 @@ IMPORTANT: Structure your response with these EXACT sections for data extraction
 - Threats: [1-10]
 
 ## ANALYSIS
-[Your detailed analysis here]
+- Department-focused narrative with evidence and implications.
+- **Metric formulas & meaning** (put here, not in METRICS):
+  • Competitive Threat Level (1–5) = 0.4*MarketOverlap(0–5) + 0.3*DealDisplacement(0–5) + 0.3*SwitchingCostInverse(0–5); higher = more immediate risk.  
+  • Market Position (1–10) = 0.35*Share + 0.25*Growth_vs_Market + 0.2*Distribution + 0.2*CustomerMix.  
+  • Innovation (1–10) = 0.4*ReleaseCadence + 0.3*R&D%Revenue + 0.3*DifferentiationDepth.  
+  • Financial Strength (1–10) = 0.3*Scale + 0.25*GrossMargin + 0.25*Profitability/Runway + 0.2*FundingAccess.  
+  • Brand Recognition (1–10) = 0.4*ShareOfVoice + 0.3*Direct/OrganicTraffic + 0.3*Ratings/NPS.  
+- Note assumptions and any data gaps.
 
-Focus on:
-- Business model and revenue strategy analysis
-- Competitive strengths and vulnerabilities
-- Market positioning and differentiation
-- Strategic threats and opportunities
-- Key insights for competitive response
-
-Keep analysis under 600 words with clear, actionable insights.
+Keep under 500 words.
 """
 
-WRITER_PROMPT = """You are a Writer Agent specialized in competitive intelligence reporting.
+WRITER_PROMPT = """You are a Writer Agent producing an executive-ready competitive brief.
 
-Your role:
-1. **Executive Summary**: Create clear, actionable competitive intelligence reports
-2. **Strategic Recommendations**: Provide specific recommendations based on analysis
-3. **Risk Assessment**: Highlight key competitive risks and opportunities
-4. **Action Items**: Suggest concrete next steps for competitive response
+Inputs: Analyst output + FUNCTIONAL_FOCUS.
 
-Structure your reports with:
-- Executive Summary (key findings and threat level)
-- Business Model Analysis
-- Competitive Positioning
-- Strategic Recommendations
-- Action Items
+Structure (≤500 words):
+- **Executive Summary**: 3–5 bullets; overall threat level; one-line takeaway for the focus department.
+- **Metrics at a Glance**: list the five metric values with a brief meaning (e.g., "Innovation 8/10 — fast ship cadence & strong R&D%").
+- **Business Model Analysis** (focus-aware): how they make money, pricing/packaging, cost drivers, and key levers affecting the selected department.
+- **Competitive Positioning**: differentiators vs. us, target segments, channels, and customer proof.
+- **Strategic Recommendations** (focus-aware): 4–6 specific moves (defensive & offensive) with expected impact.
+- **Action Items**: owners & next steps (1–2 weeks), plus 2–3 "Watchpoints".
 
-Keep reports under 700 words, professional tone, with brief source mentions.
-Focus on actionable intelligence for decision-makers.
+Cite source URLs lightly in-line (e.g., "[pricing]").
+Professional tone, executive-ready format, actionable intelligence.
 """
 
 
@@ -435,8 +444,8 @@ class MultiAgentCompetitiveIntelligence:
             return cached_analysis
 
         self._send_status_update(
-            f"\n🎯 Starting Multi-Agent Analysis for: {competitor_name}", "start")
-        self._send_status_update("=" * 60)
+            f"🎯 Starting Multi-Agent Analysis for: {competitor_name}", "start")
+        self._send_status_update("Initializing multi-agent workflow...")
 
         try:
             # Update researcher agent with niche-specific prompt
@@ -455,7 +464,7 @@ class MultiAgentCompetitiveIntelligence:
             }.get(niche, f"{niche.upper()} Focus")
 
             self._send_status_update(
-                f"\n📊 Step 1: Researcher Agent gathering competitive intelligence ({niche_label})...", "research_start")
+                f"📊 Researcher Agent gathering competitive intelligence ({niche_label})...", "research_start")
 
             # Create niche-specific research query
             base_research_query = f"""Research competitive intelligence for "{competitor_name}".
@@ -564,16 +573,18 @@ class MultiAgentCompetitiveIntelligence:
             Use your tools to collect detailed, factual information from multiple sources.
             """
 
+            self._send_status_update(
+                "🌐 Collecting data from multiple sources...")
             researcher_response = self.researcher_agent(research_query)
             research_findings = str(researcher_response)
             self._send_status_update(
-                "✅ Research complete", "research_complete")
+                "✅ Research complete - Data gathered from web sources", "research_complete")
 
             # Step 2: Analyst Agent performs strategic analysis
             self._send_status_update(
-                "\n🔍 Step 2: Analyst Agent performing strategic analysis...", "analysis_start")
+                "🔍 Analyst Agent performing strategic analysis...", "analysis_start")
             self._send_status_update(
-                "Analyzing competitive positioning and threats...")
+                "📊 Analyzing competitive positioning and threats...")
 
             analysis_query = f"""Analyze these competitive intelligence findings for "{competitor_name}":
 
@@ -589,19 +600,22 @@ class MultiAgentCompetitiveIntelligence:
             Focus on actionable insights and strategic implications.
             """
 
+            self._send_status_update(
+                "🧠 Processing competitive intelligence...")
             analyst_response = self.analyst_agent(analysis_query)
             strategic_analysis = str(analyst_response)
 
             # Extract structured metrics from analysis
+            self._send_status_update("📈 Extracting key metrics and scores...")
             extracted_metrics = extract_metrics_from_analysis(
                 strategic_analysis)
 
             self._send_status_update(
-                "✅ Strategic analysis complete", "analysis_complete")
+                "✅ Strategic analysis complete - Metrics calculated", "analysis_complete")
 
             # Step 3: Writer Agent creates final report
             self._send_status_update(
-                "\n📝 Step 3: Writer Agent generating comprehensive report...", "report_start")
+                "📝 Writer Agent generating comprehensive report...", "report_start")
 
             report_query = f"""Create a comprehensive competitive intelligence report for "{competitor_name}" based on this analysis:
 
@@ -621,12 +635,12 @@ class MultiAgentCompetitiveIntelligence:
             Focus on actionable intelligence for decision-makers.
             """
 
+            self._send_status_update(
+                "✍️ Crafting executive summary and recommendations...")
             final_report = self.writer_agent(report_query)
 
-            self._send_status_update("\n" + "=" * 60, "complete")
             self._send_status_update(
                 "✅ Multi-Agent Analysis Complete!", "complete")
-            self._send_status_update("=" * 60)
 
             # Prepare comprehensive results with extracted metrics
             result = {

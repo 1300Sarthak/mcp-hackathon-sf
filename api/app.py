@@ -6,6 +6,7 @@ RESTful API with streaming capabilities for real-time tool call monitoring
 
 from redis_cache import get_cache
 from ci_agent import MultiAgentCompetitiveIntelligence, get_gemini_model
+from discovery_agent import CompetitorDiscoveryAgent
 import asyncio
 import json
 import logging
@@ -431,6 +432,225 @@ async def get_demo_scenarios():
         "scenarios": scenarios,
         "timestamp": datetime.now().isoformat()
     }
+
+# Competitor Discovery endpoints
+
+
+class DiscoveryRequest(BaseModel):
+    """Request model for competitor discovery"""
+    business_idea: str = Field(..., description="Business idea description")
+    stream: bool = Field(
+        False, description="Enable streaming for real-time updates")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "business_idea": "A project management tool for remote teams with built-in video conferencing",
+                    "stream": True
+                }
+            ]
+        }
+    }
+
+
+class DiscoveryResponse(BaseModel):
+    """Response model for completed discovery"""
+    business_idea: str
+    competitors_found: str
+    competitive_analysis: str
+    discovery_report: str
+    timestamp: str
+    status: str
+    workflow: str
+
+
+@app.post("/discover/competitors", response_model=DiscoveryResponse)
+async def discover_competitors(request: DiscoveryRequest):
+    """
+    Discover potential competitors based on business idea
+
+    This endpoint runs the multi-agent competitor discovery workflow
+    to find and analyze potential competitors across multiple platforms.
+    """
+    try:
+        logger.info(
+            f"Starting competitor discovery for business idea: {request.business_idea[:50]}...")
+
+        # Initialize the discovery system
+        discovery_system = CompetitorDiscoveryAgent()
+
+        # Run the discovery workflow
+        result = discovery_system.discover_competitors(request.business_idea)
+
+        if result["status"] == "error":
+            raise HTTPException(status_code=500, detail=result.get(
+                "error", "Discovery failed"))
+
+        logger.info(
+            f"Discovery completed for business idea: {request.business_idea[:50]}...")
+
+        return DiscoveryResponse(**result)
+
+    except Exception as e:
+        logger.error(f"Discovery failed for business idea: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/discover/competitors/stream")
+async def discover_competitors_stream(request: DiscoveryRequest):
+    """
+    Discover competitors with real-time streaming updates
+
+    This endpoint provides real-time updates during the discovery process,
+    including multi-platform search progress and competitor findings.
+    """
+    if not request.stream:
+        # If streaming not requested, redirect to regular endpoint
+        return await discover_competitors(request)
+
+    session_id = f"discovery_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{request.business_idea.replace(' ', '_')[:20]}"
+
+    async def generate_discovery_stream():
+        """Generate streaming events for competitor discovery"""
+        try:
+            # Initialize session tracking
+            streaming_sessions[session_id] = {
+                "start_time": datetime.now().isoformat(),
+                "business_idea": request.business_idea,
+                "status": "running",
+                "type": "discovery"
+            }
+
+            events_queue = asyncio.Queue()
+
+            def stream_callback(event):
+                """Callback to capture discovery streaming events"""
+                try:
+                    # Validate event is JSON serializable before queuing
+                    json.dumps(event)
+                    asyncio.create_task(events_queue.put(event))
+                except (TypeError, ValueError) as json_error:
+                    # Create a safe fallback event
+                    safe_event = {
+                        "timestamp": datetime.now().isoformat(),
+                        "type": "tool_call",
+                        "message": f"Non-serializable discovery event: {str(json_error)}",
+                        "original_type": event.get("type", "unknown") if isinstance(event, dict) else "unknown"
+                    }
+                    asyncio.create_task(events_queue.put(safe_event))
+                except Exception as e:
+                    logger.error(f"Discovery stream callback error: {e}")
+
+            # Start discovery in background
+            async def run_discovery():
+                discovery_system = None
+                try:
+                    discovery_system = CompetitorDiscoveryAgent(
+                        stream_callback)
+                    result = discovery_system.discover_competitors(
+                        request.business_idea)
+
+                    # Send final result
+                    final_event = {
+                        "timestamp": datetime.now().isoformat(),
+                        "type": "complete",
+                        "data": result
+                    }
+                    await events_queue.put(final_event)
+
+                    # Update session status
+                    streaming_sessions[session_id]["status"] = "completed"
+                    streaming_sessions[session_id]["result"] = result
+
+                except Exception as e:
+                    logger.error(
+                        f"Discovery error for session {session_id}: {e}")
+                    error_event = {
+                        "timestamp": datetime.now().isoformat(),
+                        "type": "error",
+                        "message": str(e)
+                    }
+                    await events_queue.put(error_event)
+                    streaming_sessions[session_id]["status"] = "error"
+                finally:
+                    # Signal end of stream
+                    await events_queue.put(None)
+
+            # Start discovery
+            discovery_task = asyncio.create_task(run_discovery())
+
+            # Send initial event
+            initial_event = {
+                "timestamp": datetime.now().isoformat(),
+                "type": "session_start",
+                "session_id": session_id,
+                "message": f"Starting competitor discovery for: {request.business_idea[:50]}..."
+            }
+            yield f"data: {json.dumps(initial_event)}\n\n"
+
+            # Stream events as they come
+            while True:
+                try:
+                    # Wait for event with timeout
+                    event = await asyncio.wait_for(events_queue.get(), timeout=1.0)
+
+                    if event is None:  # End of stream signal
+                        break
+
+                    # Safe JSON serialization
+                    try:
+                        event_json = json.dumps(event)
+                        yield f"data: {event_json}\n\n"
+                    except (TypeError, ValueError) as e:
+                        # Fallback for non-serializable events
+                        safe_event = {
+                            "timestamp": datetime.now().isoformat(),
+                            "type": "error",
+                            "message": f"Event serialization error: {str(e)}",
+                            "original_type": event.get("type", "unknown")
+                        }
+                        yield f"data: {json.dumps(safe_event)}\n\n"
+
+                except asyncio.TimeoutError:
+                    # Send heartbeat to keep connection alive
+                    heartbeat = {
+                        "timestamp": datetime.now().isoformat(),
+                        "type": "heartbeat"
+                    }
+                    yield f"data: {json.dumps(heartbeat)}\n\n"
+                    continue
+
+            # Clean up
+            await discovery_task
+
+        except Exception as e:
+            logger.error(
+                f"Discovery streaming error for session {session_id}: {e}")
+            error_event = {
+                "timestamp": datetime.now().isoformat(),
+                "type": "error",
+                "message": str(e)
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
+        finally:
+            # Clean up session after delay
+            async def cleanup():
+                await asyncio.sleep(300)  # Keep session for 5 minutes
+                streaming_sessions.pop(session_id, None)
+
+            asyncio.create_task(cleanup())
+
+    return StreamingResponse(
+        generate_discovery_stream(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream"
+        }
+    )
+
 
 # Cache management endpoints
 

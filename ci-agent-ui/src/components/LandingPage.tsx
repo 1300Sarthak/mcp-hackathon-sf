@@ -1,12 +1,18 @@
+import { useState } from 'react'
 import CompanySearchCard from './CompanySearchCard'
+import CompetitorDiscoveryChat from './CompetitorDiscoveryChat'
+import Footer from './Footer'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { Search, Compass, BarChart3 } from 'lucide-react'
 
 interface LandingPageProps {
   onAnalyze: (opts: { company: string; url?: string; section: string }) => void
+  onCompare: () => void
 }
 
-export default function LandingPage({ onAnalyze }: LandingPageProps) {
+export default function LandingPage({ onAnalyze, onCompare }: LandingPageProps) {
+  const [mode, setMode] = useState<'analyze' | 'discover'>('analyze')
 
   return (
     <div 
@@ -43,7 +49,23 @@ export default function LandingPage({ onAnalyze }: LandingPageProps) {
             </div>
 
             {/* Navigation Links */}
-            <div className="hidden md:flex items-center space-x-8">
+            <div className="hidden md:flex items-center space-x-4">
+              <Button
+                onClick={onCompare}
+                className="font-medium transition-all duration-200 hover:brightness-110 hover:scale-105"
+                style={{
+                  backgroundColor: 'transparent',
+                  color: '#f9f9f9',
+                  border: '1px solid #262626',
+                  borderRadius: '9999px',
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  fontWeight: 500
+                }}
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Compare Companies
+              </Button>
               <Button
                 className="font-bold transition-all duration-200 hover:brightness-110 hover:scale-105"
                 style={{
@@ -114,14 +136,9 @@ export default function LandingPage({ onAnalyze }: LandingPageProps) {
               <span style={{ color: '#facc15' }}>AI Agents</span>
             </h1>
 
-            {/* Search Card */}
-            <div className="mb-8">
-              <CompanySearchCard onAnalyze={onAnalyze} />
-            </div>
-
             {/* Muted Subtitle */}
             <p 
-              className="text-xl mb-12 max-w-2xl mx-auto"
+              className="text-xl mb-8 max-w-2xl mx-auto"
               style={{
                 fontSize: '18px',
                 fontWeight: 400,
@@ -133,11 +150,56 @@ export default function LandingPage({ onAnalyze }: LandingPageProps) {
               Get comprehensive competitive intelligence in minutes, not weeks. Our multi-agent AI system 
               researches, analyzes, and delivers executive-ready insights automatically.
             </p>
+
+            {/* Mode Toggle */}
+            <div className="flex justify-center mb-8">
+              <div className="flex rounded-full p-1" style={{ backgroundColor: '#1a1a1a', border: '1px solid #262626' }}>
+                <button
+                  onClick={() => setMode('analyze')}
+                  className={`px-6 py-3 text-sm font-medium rounded-full transition-all flex items-center space-x-2 ${
+                    mode === 'analyze' 
+                      ? 'text-black shadow-sm' 
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                  style={{ 
+                    backgroundColor: mode === 'analyze' ? '#FACC15' : 'transparent'
+                  }}
+                >
+                  <Search className="w-4 h-4" />
+                  <span>Analyze Competitor</span>
+                </button>
+                <button
+                  onClick={() => setMode('discover')}
+                  className={`px-6 py-3 text-sm font-medium rounded-full transition-all flex items-center space-x-2 ${
+                    mode === 'discover' 
+                      ? 'text-black shadow-sm' 
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                  style={{ 
+                    backgroundColor: mode === 'discover' ? '#FACC15' : 'transparent'
+                  }}
+                >
+                  <Compass className="w-4 h-4" />
+                  <span>Discover Competitors</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Dynamic Interface */}
+            <div className="mb-8">
+              {mode === 'analyze' ? (
+                <CompanySearchCard onAnalyze={onAnalyze} />
+              ) : (
+                <CompetitorDiscoveryChat onAnalyze={onAnalyze} />
+              )}
+            </div>
           </div>
         </section>
 
-
       </main>
+
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }

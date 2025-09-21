@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import LandingPage from './components/LandingPage'
 import CompetitiveIntelligenceForm from './components/CompetitiveIntelligenceForm'
+import CompanyComparison from './components/CompanyComparison'
+
+type AppMode = 'landing' | 'analysis' | 'comparison'
 
 function App() {
-  const [showAnalysis, setShowAnalysis] = useState(false)
+  const [currentMode, setCurrentMode] = useState<AppMode>('landing')
   const [analysisData, setAnalysisData] = useState<{
     company: string
     url?: string
@@ -13,15 +16,19 @@ function App() {
   const handleAnalyze = (opts: { company: string; url?: string; section: string }) => {
     console.log('Analysis requested:', opts)
     setAnalysisData(opts)
-    setShowAnalysis(true)
+    setCurrentMode('analysis')
+  }
+
+  const handleCompare = () => {
+    setCurrentMode('comparison')
   }
 
   const handleBackToLanding = () => {
-    setShowAnalysis(false)
+    setCurrentMode('landing')
     setAnalysisData(null)
   }
 
-  if (showAnalysis && analysisData) {
+  if (currentMode === 'analysis' && analysisData) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: '#0a0a0a' }}>
         {/* Back Button */}
@@ -48,7 +55,11 @@ function App() {
     )
   }
 
-  return <LandingPage onAnalyze={handleAnalyze} />
+  if (currentMode === 'comparison') {
+    return <CompanyComparison onBack={handleBackToLanding} />
+  }
+
+  return <LandingPage onAnalyze={handleAnalyze} onCompare={handleCompare} />
 }
 
 export default App
