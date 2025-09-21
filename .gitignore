@@ -4,6 +4,10 @@ __pycache__/
 
 *.so
 
+
+.gitignore
+
+
 .Python
 build/
 develop-eggs/
