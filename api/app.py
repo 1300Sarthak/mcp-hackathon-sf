@@ -19,10 +19,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 import uvicorn
+import os
 from dotenv import load_dotenv
 
 # Load environment variables from .env if present
 load_dotenv()
+
+# Get environment variables
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 # Import our competitive intelligence system
 
@@ -64,11 +69,18 @@ app = FastAPI(
 )
 
 # Add CORS middleware for frontend integration
+# Configure allowed origins based on environment
+allowed_origins = ["*"] if ENVIRONMENT == "development" else [
+    FRONTEND_URL,
+    "https://*.vercel.app",
+    "https://*.netlify.app"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this for production
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
