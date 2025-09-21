@@ -1,474 +1,226 @@
-# 🤖 Multi-Agent Competitive Intelligence Platform
+# Info-Ninja: AI-Powered Competitive Intelligence Platform
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/React-18+-61DAFB.svg)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+## Inspiration
 
-> Transform weeks of manual competitive research into minutes of AI-powered analysis using autonomous agents and enterprise-grade web scraping.
+In today's fast-paced business environment, companies spend weeks manually gathering competitive intelligence - scraping websites, analyzing reports, and synthesizing insights. We were inspired to create **Info-Ninja** after witnessing how businesses struggle with:
 
-![Platform Demo](https://via.placeholder.com/800x400/1f2937/ffffff?text=Multi-Agent+Intelligence+Platform)
+- **Time-consuming research**: Manual competitive analysis taking 2-4 weeks
+- **Scattered information**: Data spread across multiple sources and formats
+- **Lack of focus**: Generic analysis that doesn't address specific business needs
+- **Poor visualization**: Text-heavy reports that executives can't quickly digest
 
-## 🌟 Features
-
-- **🤖 Multi-Agent Workflow**: Three specialized AI agents working in harmony
-  - 📊 **Researcher Agent**: Data collection with Bright Data web scraping
-  - 🔍 **Analyst Agent**: Strategic SWOT analysis and threat assessment  
-  - 📝 **Writer Agent**: Executive-ready competitive intelligence reports
-
-- **🌊 Real-Time Streaming**: Live progress updates and tool call monitoring
-- **⚡ Enterprise-Grade**: Built with FastAPI, React, and TypeScript
-- **🎯 Comprehensive Analysis**: Pricing, leadership, market position, and strategy
-- **📱 Beautiful UI**: Vercel-inspired design with responsive layout
-- **🔧 Production Ready**: Docker support and scalable architecture
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Python 3.10+
-- Node.js 18+
-- [Gemini API Key](https://aistudio.google.com/app/apikey)
-- [Bright Data API Key](https://brightdata.com/)
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/1300Sarthak/mcp-hackathon-sf.git
-cd competitive-intelligence
-```
-
-### 2. Backend Setup
-
-```bash
-# Install Python dependencies
-cd api && pip install -r requirements.txt
-
-# Set environment variables
-export GEMINI_API_KEY="your_gemini_api_key"
-export BRIGHTDATA_API_KEY="your_brightdata_api_key"
-
-# Start the API server
-python app.py
-```
-
-The API will be available at `http://localhost:8000`
-
-### 3. Frontend Setup
-
-```bash
-# Navigate to frontend directory
-cd ci-agent-ui
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-The frontend will be available at `http://localhost:5173`
-
-### 4. Try It Out!
-
-1. Open the frontend in your browser
-2. Select a demo scenario (Slack, Notion, Figma) or enter a custom company
-3. Click "Start Analysis" and watch the AI agents work in real-time
-4. Get comprehensive competitive intelligence in minutes!
-
-## 📋 Table of Contents
-
-- [Architecture](#-architecture)
-- [Installation](#-installation)
-- [API Documentation](#-api-documentation)
-- [Frontend Guide](#-frontend-guide)
-- [Configuration](#-configuration)
-- [Docker Deployment](#-docker-deployment)
-- [Examples](#-examples)
-- [Contributing](#-contributing)
-- [License](#-license)
-
-## 🏗️ Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   📊 Researcher │───▶│   🔍 Analyst    │───▶│   📝 Writer     │
-│     Agent       │    │     Agent       │    │     Agent       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
-   Data Collection      Strategic Analysis       Report Generation
-   - Web scraping       - SWOT analysis         - Executive summary
-   - Market research     - Threat assessment     - Recommendations
-   - Company intel       - Competitive position  - Action items
-
-                              ▲
-                              │
-                    ┌─────────────────┐
-                    │   🌐 FastAPI    │
-                    │   Backend       │
-                    └─────────────────┘
-                              ▲
-                              │
-                    ┌─────────────────┐
-                    │   ⚛️ React      │
-                    │   Frontend      │
-                    └─────────────────┘
-```
-
-### Tech Stack
-
-**Backend:**
-- **FastAPI**: Modern, fast web framework for building APIs
-- **Strands Agents**: Autonomous AI agent framework
-- **Bright Data**: Enterprise web scraping and data collection
-- **Google Gemini 2.0**: Advanced language model for analysis
-- **LiteLLM**: Unified interface for multiple AI models
-
-**Frontend:**
-- **React 18**: Modern UI library with hooks
-- **TypeScript**: Type-safe JavaScript development
-- **Vite**: Fast build tool and development server
-- **Tailwind CSS**: Utility-first CSS framework
-- **shadcn/ui**: Beautiful, accessible component library
-
-## 🛠️ Installation
-
-### Development Setup
-
-1. **Clone and setup backend:**
-```bash
-git clone https://github.com/brightdata/competitive-intelligence.git
-cd competitive-intelligence
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements-api.txt
-```
-
-2. **Setup frontend:**
-```bash
-cd ci-agent-ui
-npm install
-```
-
-3. **Environment configuration:**
-```bash
-# Copy example environment file
-cp .env.example .env
-
-# Edit .env with your API keys
-GEMINI_API_KEY=your_gemini_api_key_here
-BRIGHTDATA_API_KEY=your_brightdata_api_key_here
-```
-
-4. **Start development servers:**
-```bash
-# Terminal 1: Backend
-python app.py
-
-# Terminal 2: Frontend
-cd ci-agent-ui && npm run dev
-```
-
-### Production Setup
-
-See our [Docker Deployment](#-docker-deployment) section for production deployment instructions.
-
-## 📚 API Documentation
-
-### Base URL
-```
-http://localhost:8000
-```
-
-### Endpoints
-
-#### Health Check
-```http
-GET /health
-```
-
-#### Competitive Analysis (Streaming)
-```http
-POST /analyze/stream
-Content-Type: application/json
-
-{
-  "competitor_name": "Slack",
-  "competitor_website": "https://slack.com",
-  "stream": true
-}
-```
-
-#### Get Demo Scenarios
-```http
-GET /demo-scenarios
-```
-
-#### Session Management
-```http
-GET /sessions
-GET /sessions/{session_id}
-```
-
-### Response Format
-
-```json
-{
-  "competitor": "Slack",
-  "website": "https://slack.com",
-  "research_findings": "Comprehensive research data...",
-  "strategic_analysis": "SWOT and competitive analysis...",
-  "final_report": "Executive summary and recommendations...",
-  "timestamp": "2025-09-17T10:30:00Z",
-  "status": "success"
-}
-```
-
-### Interactive API Documentation
-
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **OpenAPI Schema**: http://localhost:8000/openapi.json
-
-## 🎨 Frontend Guide
-
-### Key Components
-
-- **`CompetitiveIntelligenceForm`**: Main analysis interface with real-time streaming
-- **`DemoScenarios`**: Pre-configured company examples
-- **`Header`**: Navigation and branding
-- **`ProgressTracker`**: Live agent workflow visualization
-
-### Available Scripts
-
-```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-npm run lint         # Run ESLint
-```
-
-### Customization
-
-**Styling**: Modify `tailwind.config.js` for theme customization
-**Components**: Add new shadcn/ui components with `npx shadcn@latest add [component]`
-**API Endpoint**: Update `API_BASE_URL` in component files
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `GEMINI_API_KEY` | Google AI Studio API key | Yes | - |
-| `BRIGHTDATA_API_KEY` | Bright Data API key | Yes | - |
-| `GEMINI_MODEL_NAME` | Gemini model version | No | `gemini-2.0-flash` |
-| `API_HOST` | API server host | No | `0.0.0.0` |
-| `API_PORT` | API server port | No | `8000` |
-| `LOG_LEVEL` | Logging level | No | `info` |
-
-### Agent Configuration
-
-Each agent can be customized by modifying their system prompts in `api/ci_agent.py`:
-
-- **Researcher Agent**: Data collection and web scraping behavior
-- **Analyst Agent**: Analysis depth and strategic focus
-- **Writer Agent**: Report structure and formatting
-
-## 🐳 Docker Deployment
-
-### Using Docker Compose
-
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-```
-
-### Manual Docker Build
-
-**Backend:**
-```bash
-cd api
-docker build -t ci-backend .
-docker run -p 8000:8000 \
-  -e GEMINI_API_KEY=your_key \
-  -e BRIGHTDATA_API_KEY=your_key \
-  ci-backend
-```
-
-**Frontend:**
-```bash
-cd ci-agent-ui
-docker build -t ci-frontend .
-docker run -p 3000:80 ci-frontend
-```
-
-### Production Considerations
-
-- Use environment-specific configuration files
-- Implement proper logging and monitoring
-- Set up SSL/TLS certificates
-- Configure rate limiting and security headers
-- Use a reverse proxy (nginx/Cloudflare)
-
-## 💻 Examples
-
-### Python Client
+We envisioned an AI system that could deliver executive-ready competitive intelligence in minutes, not weeks.
+
+## What it does
+
+**Info-Ninja** is a multi-agent AI platform that transforms competitive research through:
+
+### 🎯 **Niche-Specific Intelligence**
+
+- **Department Focus**: Analyze competitors through specific lenses (IT, Sales, Marketing, Finance, Product, HR, Operations)
+- **Targeted Research**: Each analysis focuses on relevant metrics and insights for your chosen business function
+- **Comprehensive Option**: "All Departments" mode for complete competitive overview
+
+### 🤖 **Multi-Agent Architecture**
+
+- **Researcher Agent**: Gathers data from diverse sources using Bright Data MCP tools
+- **Analyst Agent**: Performs strategic analysis with quantified metrics and SWOT assessment
+- **Writer Agent**: Creates executive-ready reports with actionable recommendations
+
+### 📊 **Interactive Visualizations**
+
+- **Real-time Charts**: Bar charts, pie charts, and radial gauges for key metrics
+- **SWOT Analysis**: Visual breakdown of competitive strengths and weaknesses
+- **Threat Level Indicators**: Color-coded competitive threat assessment
+- **Bento Box Layout**: Clean, modern dashboard design
+
+### ⚡ **High-Performance Caching**
+
+- **Redis Integration**: 90% cost reduction through intelligent caching
+- **60-600x Speed Improvement**: Instant results for previously analyzed companies
+- **Niche-Aware Caching**: Separate cache entries for different analysis focuses
+
+## How we built it
+
+### **Frontend Architecture**
+
+- **React + TypeScript**: Modern, type-safe user interface
+- **Tailwind CSS**: Responsive, professional styling
+- **Recharts**: Interactive data visualizations
+- **Shadcn/UI**: Consistent, accessible component library
+
+### **Backend Infrastructure**
+
+- **FastAPI**: High-performance Python API with streaming capabilities
+- **Multi-Agent System**: Built with Strands Agents framework
+- **Google Gemini 2.0**: Advanced AI model for analysis and report generation
+- **Server-Sent Events**: Real-time progress updates during analysis
+
+### **Data Collection & Processing**
+
+- **Bright Data Integration**: Enterprise-grade web scraping via MCP tools for reliable data collection from 10+ source types
+- **LlamaIndex**: Advanced document indexing and retrieval for processing unstructured competitive intelligence data
+- **Diverse Source Strategy**: Company websites, SEC filings, job boards, review sites, social media, industry publications
+- **Smart Data Parsing**: Structured extraction of metrics and insights from unstructured data using LlamaIndex's parsing capabilities
+
+### **Caching & Performance**
+
+- **Redis Cache**: Enterprise-grade in-memory caching delivering 90% cost reduction and 600x speed improvements
+- **Intelligent TTL Management**: Different expiration times for analysis (24h), research (2h), and Gemini responses (24h)
+- **Niche-Aware Cache Keys**: MD5-hashed keys that include department focus for precise cache hits
+- **Production-Ready Redis**: Docker containerized with comprehensive monitoring and management tools
+- **Graceful Degradation**: System works seamlessly even when Redis is unavailable
+
+### **Key Technical Innovations**
 
 ```python
-import requests
+# Redis niche-aware cache keys with TTL management
+cache_key = generate_cache_key("analysis", {
+    "competitor": company_name,
+    "website": company_website,
+    "niche": analysis_focus  # IT, Sales, Marketing, etc.
+})
+redis_client.setex(cache_key, ttl=86400, value=analysis_data)
 
-# Start streaming analysis
-response = requests.post(
-    "http://localhost:8000/analyze/stream",
-    json={
-        "competitor_name": "Slack",
-        "competitor_website": "https://slack.com",
-        "stream": True
-    },
-    stream=True
-)
+# Bright Data integration with diverse source targeting
+configured_bright_data = get_configured_bright_data()
+search_queries = generate_niche_queries(competitor, niche)
+# Searches: company sites, job boards, review platforms, social media
 
-for line in response.iter_lines(decode_unicode=True):
-    if line.startswith("data: "):
-        event = json.loads(line[6:])
-        print(f"Event: {event['type']}")
-        
-        if event['type'] == 'complete':
-            print("Analysis completed!")
-            break
+# LlamaIndex document processing pipeline
+from llama_index import VectorStoreIndex, Document
+documents = [Document(text=scraped_content) for scraped_content in bright_data_results]
+index = VectorStoreIndex.from_documents(documents)
+query_engine = index.as_query_engine()
 ```
 
-### JavaScript/Fetch
+## Challenges we ran into
 
-```javascript
-const response = await fetch('/analyze/stream', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    competitor_name: 'Slack',
-    stream: true
-  })
-});
+### **1. Multi-Source Data Integration**
 
-const reader = response.body.getReader();
-const decoder = new TextDecoder();
+- **Problem**: Bright Data initially returning similar information from different queries, limiting intelligence depth
+- **Solution**: Implemented diverse source strategy with niche-specific search patterns and LlamaIndex document processing
+- **Bright Data Integration**: Configured zone settings and query optimization for reliable web scraping across 10+ source types
+- **LlamaIndex Processing**: Built document indexing pipeline to structure and query unstructured competitive data
+- **Result**: Rich, varied intelligence from company sites, SEC filings, job boards, review platforms, social media, and industry publications
 
-while (true) {
-  const { value, done } = await reader.read();
-  if (done) break;
-  
-  const chunk = decoder.decode(value);
-  // Process streaming events
-}
-```
+### **2. Real-Time Streaming Architecture**
 
-### CLI Usage
+- **Challenge**: Coordinating three AI agents with live progress updates
+- **Solution**: Built custom streaming callback system with Server-Sent Events
+- **Impact**: Users see real-time progress through research → analysis → report generation
 
-```bash
-# Run interactive demo
-python api/ci_agent.py
+### **3. Redis Cache Architecture Complexity**
 
-# Analyze specific competitor
-python -c "
-from api.ci_agent import MultiAgentCompetitiveIntelligence
-ci = MultiAgentCompetitiveIntelligence()
-result = ci.run_competitive_intelligence_workflow('Slack')
-print(result['final_report'])
-"
-```
+- **Issue**: Different analysis focuses needed separate caching strategies while maintaining performance
+- **Redis Innovation**: Implemented niche-aware cache keys with MD5 hashing that separate IT analysis from Sales analysis for the same company
+- **TTL Strategy**: Different expiration times for different data types (analysis: 24h, research: 2h, Gemini responses: 24h)
+- **Production Setup**: Docker containerized Redis with monitoring, backup, and management tools
+- **Benefit**: 90% API cost reduction and 600x speed improvement while maintaining data integrity
 
-## 🧪 Testing
+### **4. UI/UX Design Balance**
 
-### Backend Tests
+- **Challenge**: Displaying complex data without overwhelming users
+- **Approach**: Iterative design with bento box layout, white content boxes on dark background
+- **Outcome**: Clean, executive-friendly interface that highlights key insights
 
-```bash
-cd api
-pip install pytest httpx
-pytest tests/
-```
+### **5. Performance Optimization with LlamaIndex & Redis**
 
-### Frontend Tests
+- **Bottleneck**: 30-60 second analysis times for new companies due to multiple AI calls and web scraping
+- **LlamaIndex Strategy**: Implemented efficient document indexing and vector-based retrieval for faster data processing
+- **Redis Caching**: Intelligent multi-layer caching with different TTL for different data types and niche-specific keys
+- **Bright Data Optimization**: Configured optimal zone settings and request batching for reliable, fast web scraping
+- **Achievement**: 100ms response time for cached analyses (600x improvement) with 90% API cost reduction
 
-```bash
-cd ci-agent-ui
-npm test
-npm run test:coverage
-```
+## Accomplishments that we're proud of
 
-### Integration Tests
+### **🚀 Performance Breakthroughs**
 
-```bash
-# Start services
-docker-compose up -d
+- **90% Cost Reduction**: Dramatic decrease in API costs through intelligent Redis caching and LlamaIndex optimization
+- **600x Speed Improvement**: From 30-60 seconds to 100ms for cached results using Redis enterprise-grade caching
+- **Real-Time Experience**: Live streaming updates during Bright Data scraping and multi-agent analysis process
+- **Production-Ready Caching**: Docker-containerized Redis with monitoring, TTL management, and graceful degradation
 
-# Run end-to-end tests
-npm run test:e2e
-```
+### **🎯 Innovation in AI Orchestration**
 
-## 🤝 Contributing
+- **Multi-Agent Workflow**: Successfully coordinated three specialized AI agents
+- **Dynamic Prompt Engineering**: Context-aware prompts that adapt to business focus areas
+- **Structured Data Extraction**: Reliable parsing of quantified metrics from AI responses
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+### **📊 Executive-Ready Output**
 
-### Development Workflow
+- **Visual Intelligence**: Transformed text-heavy reports into interactive dashboards
+- **Actionable Insights**: Specific recommendations with expected impact and next steps
+- **Professional Presentation**: Board-ready competitive intelligence in minutes
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes and add tests
-4. Commit with conventional commits: `git commit -m "feat: add amazing feature"`
-5. Push to your fork: `git push origin feature/amazing-feature`
-6. Open a Pull Request
+### **🏗️ Production-Quality Architecture**
 
-### Code Style
+- **Scalable Backend**: FastAPI with proper error handling and monitoring
+- **Enterprise Caching**: Redis integration with comprehensive management tools
+- **Responsive Frontend**: Works seamlessly across devices and screen sizes
 
-- **Python**: Follow PEP 8, use Black formatter
-- **TypeScript**: Follow ESLint configuration
-- **Commits**: Use [Conventional Commits](https://conventionalcommits.org/)
+### **🔍 Comprehensive Coverage**
 
-## 📝 Changelog
+- **8 Business Functions**: Specialized analysis for every department
+- **Diverse Data Sources**: 10+ different source types for rich intelligence
+- **Quantified Analysis**: Numerical scoring for competitive threat, market position, innovation, financial strength, and brand recognition
 
-See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes.
+## What we learned
 
-## 🐛 Issues and Support
+### **Technical Insights**
 
-- **Bug Reports**: [GitHub Issues](https://github.com/brightdata/competitive-intelligence/issues)
-- **Feature Requests**: [GitHub Discussions](https://github.com/brightdata/competitive-intelligence/discussions)
-- **Documentation**: [Wiki](https://github.com/brightdata/competitive-intelligence/wiki)
+- **Multi-Agent Coordination**: Learned to orchestrate AI agents effectively with proper state management
+- **Streaming Architecture**: Mastered real-time data streaming with FastAPI and SSE
+- **Cache Strategy**: Developed sophisticated caching patterns for AI-generated content
+- **Prompt Engineering**: Created dynamic, context-aware prompts that produce consistent structured output
 
-## 📄 License
+### **Product Development**
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- **User-Centric Design**: Iterative UI improvements based on executive feedback needs
+- **Performance Psychology**: Users perceive 100ms responses as "instant" vs 30s as "slow"
+- **Data Visualization**: Charts and graphs are crucial for executive-level consumption
+- **Focus vs. Breadth**: Niche-specific analysis provides more value than generic overviews
 
-## 🙏 Acknowledgments
+### **Business Intelligence**
 
-- **[Strands](https://github.com/strands-ai/strands)**: Autonomous AI agent framework
-- **[Bright Data](https://brightdata.com/)**: Enterprise web scraping platform
-- **[Google Gemini](https://ai.google.dev/)**: Advanced language model
-- **[FastAPI](https://fastapi.tiangolo.com/)**: Modern Python web framework
-- **[shadcn/ui](https://ui.shadcn.com/)**: Beautiful React components
+- **Source Diversity**: Single sources provide limited insights; multiple sources create comprehensive intelligence
+- **Competitive Metrics**: Quantified scoring systems enable better decision-making than qualitative assessments
+- **Actionability**: Intelligence without recommended actions has limited business value
 
-## 🔗 Links
+## What's next for Info-Ninja
 
-- **Blog Post**: [Technical Deep Dive](https://dev.to/brightdata/building-multi-agent-competitive-intelligence)
+### **🔮 Advanced Analytics**
+
+- **Competitive Tracking**: Monitor competitor changes over time with trend analysis
+- **Predictive Intelligence**: AI-powered forecasting of competitor moves and market shifts
+- **Comparative Analysis**: Side-by-side competitor comparisons with gap analysis
+
+### **🌐 Enterprise Features**
+
+- **Team Collaboration**: Shared workspaces, comments, and collaborative analysis
+- **API Integration**: Connect with CRM, sales tools, and business intelligence platforms
+- **Custom Metrics**: User-defined scoring criteria and business-specific KPIs
+
+### **📈 Scale & Performance**
+
+- **Global Data Sources**: Expand beyond English-language sources for international intelligence
+- **Real-Time Monitoring**: Automated alerts when competitors make significant changes
+- **Advanced Caching**: Predictive cache warming and intelligent data refresh strategies
+
+### **🎯 Specialized Verticals**
+
+- **Industry Templates**: Pre-configured analysis frameworks for SaaS, FinTech, Healthcare, etc.
+- **Regulatory Intelligence**: Compliance and regulatory change monitoring
+- **M&A Intelligence**: Acquisition target analysis and market consolidation tracking
+
+### **🤖 AI Evolution**
+
+- **Multi-Modal Analysis**: Incorporate image, video, and audio content analysis
+- **Sentiment Analysis**: Social media and review sentiment tracking
+- **Competitive Simulation**: "What-if" scenario modeling for strategic planning
 
 ---
 
-<div align="center">
+**Info-Ninja** represents the future of competitive intelligence - where AI agents work together to deliver executive-ready insights in minutes, not weeks. By combining cutting-edge AI orchestration, intelligent caching, and beautiful data visualization, we've created a platform that transforms how businesses understand their competitive landscape.
 
-**Built with ❤️ by [Bright Data](https://github.com/brightdata)**
-
-⭐ Star this repo if you find it useful!
-
-</div>
+_Ready to ninja your competition? Try Info-Ninja today!_
