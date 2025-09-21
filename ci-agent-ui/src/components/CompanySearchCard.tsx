@@ -13,6 +13,7 @@ import {
 
 interface CompanySearchCardProps {
   onAnalyze: (opts: { company: string; url?: string; section: string }) => void
+  placeholder?: string
 }
 
 const sections = [
@@ -28,7 +29,7 @@ const sections = [
   'Executive'
 ]
 
-export default function CompanySearchCard({ onAnalyze }: CompanySearchCardProps) {
+export default function CompanySearchCard({ onAnalyze, placeholder = "Enter company name..." }: CompanySearchCardProps) {
   const [company, setCompany] = useState('')
   const [url, setUrl] = useState('')
   const [section, setSection] = useState('All')
@@ -64,7 +65,7 @@ export default function CompanySearchCard({ onAnalyze }: CompanySearchCardProps)
             value={company}
             onChange={(e) => setCompany(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Enter company name…"
+            placeholder={placeholder}
             className="w-full h-12 bg-card border-border text-foreground"
             style={{
               backgroundColor: '#1a1a1a',
@@ -174,7 +175,7 @@ export default function CompanySearchCard({ onAnalyze }: CompanySearchCardProps)
             value={company}
             onChange={(e) => setCompany(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Enter company name…"
+            placeholder={placeholder}
             className="border-0 bg-transparent text-base focus:ring-0 focus:outline-none p-0 h-auto"
             style={{
               color: '#f9f9f9',

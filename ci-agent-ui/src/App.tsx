@@ -1,65 +1,55 @@
 import { useState } from 'react'
 import LandingPage from './components/LandingPage'
-import CompetitiveIntelligenceForm from './components/CompetitiveIntelligenceForm'
+import DashboardRedesigned from './components/DashboardRedesigned'
 import CompanyComparison from './components/CompanyComparison'
-
-type AppMode = 'landing' | 'analysis' | 'comparison'
+import { AnalysisMode } from './components/AnalysisModeToggle'
 
 function App() {
-  const [currentMode, setCurrentMode] = useState<AppMode>('landing')
+  const [currentView, setCurrentView] = useState<'landing' | 'dashboard' | 'comparison'>('landing')
   const [analysisData, setAnalysisData] = useState<{
     company: string
     url?: string
     section: string
+    analysisMode?: AnalysisMode
   } | null>(null)
 
-  const handleAnalyze = (opts: { company: string; url?: string; section: string }) => {
+  const handleAnalyze = (opts: { company: string; url?: string; section: string; analysisMode?: AnalysisMode }) => {
     console.log('Analysis requested:', opts)
     setAnalysisData(opts)
-    setCurrentMode('analysis')
-  }
-
-  const handleCompare = () => {
-    setCurrentMode('comparison')
+    setCurrentView('dashboard')
   }
 
   const handleBackToLanding = () => {
-    setCurrentMode('landing')
+    setCurrentView('landing')
     setAnalysisData(null)
   }
 
-  if (currentMode === 'analysis' && analysisData) {
+  const handleCompareCompanies = () => {
+    setCurrentView('comparison')
+  }
+
+  if (currentView === 'dashboard' && analysisData) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#0a0a0a' }}>
-        {/* Back Button */}
-        <div className="p-4">
-          <button
-            onClick={handleBackToLanding}
-            className="text-sm px-4 py-2 rounded-full border transition-colors duration-200 hover:bg-gray-800"
-            style={{
-              color: '#f9f9f9',
-              borderColor: '#262626',
-              backgroundColor: 'transparent'
-            }}
-          >
-            ← Back to Search
-          </button>
-        </div>
-        
-        {/* Pass the analysis data to the existing form component */}
-        <CompetitiveIntelligenceForm 
-          initialCompany={analysisData.company}
-          initialUrl={analysisData.url}
-        />
-      </div>
+      <DashboardRedesigned
+        company={analysisData.company}
+        jobId={`job_${Date.now()}`}
+        analysisMode={analysisData.analysisMode}
+        onBack={handleBackToLanding}
+        onCompare={handleCompareCompanies}
+      />
     )
   }
 
-  if (currentMode === 'comparison') {
-    return <CompanyComparison onBack={handleBackToLanding} />
+  if (currentView === 'comparison') {
+    return (
+      <CompanyComparison
+        onBack={handleBackToLanding}
+        initialCompany1={analysisData?.company}
+      />
+    )
   }
 
-  return <LandingPage onAnalyze={handleAnalyze} onCompare={handleCompare} />
+  return <LandingPage onAnalyze={handleAnalyze} onCompare={handleCompareCompanies} />
 }
 
 export default App

@@ -1,13 +1,16 @@
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import { cn } from '@/lib/utils'
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { cn } from "@/lib/utils";
 
 interface MarkdownRendererProps {
-  content: string
-  className?: string
+  content: string;
+  className?: string;
 }
 
-export default function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
+export default function MarkdownRenderer({
+  content,
+  className,
+}: MarkdownRendererProps) {
   return (
     <div className={cn("markdown-content", className)}>
       <ReactMarkdown
@@ -44,12 +47,18 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
           
           // Enhanced list rendering for dark theme
           ul: ({ children, ...props }) => (
-            <ul className="list-disc list-outside ml-6 my-4 space-y-1" {...props}>
+            <ul
+              className="list-disc list-outside ml-6 my-4 space-y-1"
+              {...props}
+            >
               {children}
             </ul>
           ),
           ol: ({ children, ...props }) => (
-            <ol className="list-decimal list-outside ml-6 my-4 space-y-1" {...props}>
+            <ol
+              className="list-decimal list-outside ml-6 my-4 space-y-1"
+              {...props}
+            >
               {children}
             </ol>
           ),
@@ -61,7 +70,7 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
           
           // Enhanced code rendering for dark theme
           code: ({ children, className, ...props }) => {
-            const isInline = !className
+            const isInline = !className;
             if (isInline) {
               return (
                 <code 
@@ -71,15 +80,15 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
                 >
                   {children}
                 </code>
-              )
+              );
             }
             return (
               <code className={className} {...props}>
                 {children}
               </code>
-            )
+            );
           },
-          
+
           pre: ({ children, ...props }) => (
             <pre className="p-4 rounded-lg overflow-x-auto my-4" style={{ backgroundColor: '#111827', color: '#D1D5DB' }} {...props}>
               {children}
@@ -126,7 +135,7 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
           
           // Enhanced link rendering for dark theme
           a: ({ children, href, ...props }) => (
-            <a 
+            <a
               href={href}
               className="underline transition-colors"
               style={{ color: '#60A5FA' }}
@@ -161,5 +170,5 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
         {content}
       </ReactMarkdown>
     </div>
-  )
+  );
 }

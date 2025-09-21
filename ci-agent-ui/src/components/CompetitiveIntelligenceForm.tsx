@@ -46,42 +46,42 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>
 
 interface StreamEvent {
-  timestamp: string
-  type: string
-  step?: string
-  message?: string
-  tool_name?: string
-  tool_input?: any
-  data?: any
+  timestamp: string;
+  type: string;
+  step?: string;
+  message?: string;
+  tool_name?: string;
+  tool_input?: any;
+  data?: any;
 }
 
 interface AnalysisResult {
-  competitor: string
-  website?: string
-  research_findings: string
-  strategic_analysis: string
-  final_report: string
+  competitor: string;
+  website?: string;
+  research_findings: string;
+  strategic_analysis: string;
+  final_report: string;
   metrics?: {
     competitive_metrics?: {
-      threat_level?: number
-      market_position?: number
-      innovation?: number
-      financial_strength?: number
-      brand_recognition?: number
-    }
+      threat_level?: number;
+      market_position?: number;
+      innovation?: number;
+      financial_strength?: number;
+      brand_recognition?: number;
+    };
     swot_scores?: {
-      strengths?: number
-      weaknesses?: number
-      opportunities?: number
-      threats?: number
-    }
-  }
-  timestamp: string
-  status: string
-  workflow: string
+      strengths?: number;
+      weaknesses?: number;
+      opportunities?: number;
+      threats?: number;
+    };
+  };
+  timestamp: string;
+  status: string;
+  workflow: string;
 }
 
-const API_BASE_URL = 'http://localhost:8000'
+const API_BASE_URL = "http://localhost:8000";
 
 interface CompetitiveIntelligenceFormProps {
   initialCompany?: string
@@ -116,7 +116,7 @@ export default function CompetitiveIntelligenceForm({
       companyUrl: initialUrl,
       niche: initialNiche,
     },
-  })
+  });
 
   // Auto-submit when initial values are provided
   useEffect(() => {
@@ -130,7 +130,7 @@ export default function CompetitiveIntelligenceForm({
         })
       }, 100)
     }
-  }, [initialCompany, initialUrl, isAnalyzing, analysisResult])
+  }, [initialCompany, initialUrl, isAnalyzing, analysisResult]);
 
   const analyzeCompetitor = async (values: FormValues) => {
     setIsAnalyzing(true)
@@ -141,10 +141,10 @@ export default function CompetitiveIntelligenceForm({
 
     try {
       const response = await fetch(`${API_BASE_URL}/analyze/stream`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
         },
         body: JSON.stringify({
           competitor_name: values.companyName,
@@ -152,31 +152,31 @@ export default function CompetitiveIntelligenceForm({
           niche: values.niche,
           stream: true,
         }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
 
       if (!reader) {
-        throw new Error('Failed to get response reader')
+        throw new Error("Failed to get response reader");
       }
 
       while (true) {
-        const { done, value } = await reader.read()
-        
-        if (done) break
+        const { done, value } = await reader.read();
 
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
+          if (line.startsWith("data: ")) {
             try {
-              const eventData: StreamEvent = JSON.parse(line.slice(6))
+              const eventData: StreamEvent = JSON.parse(line.slice(6));
 
               // Update progress and current step based on event type
               if (eventData.type === 'status_update') {
@@ -209,31 +209,32 @@ export default function CompetitiveIntelligenceForm({
                 } else if (currentStep.includes('Writer')) {
                   setProgress(prev => Math.min(prev + 2, 95)) // Gradually increase during writing
                 }
-              } else if (eventData.type === 'complete') {
-                setAnalysisResult(eventData.data as AnalysisResult)
-                setCurrentStep('Analysis complete!')
-                setProgress(100)
-              } else if (eventData.type === 'error') {
-                throw new Error(eventData.message || 'Analysis failed')
+              } else if (eventData.type === "complete") {
+                setAnalysisResult(eventData.data as AnalysisResult);
+                setCurrentStep("Analysis complete!");
+                setProgress(100);
+              } else if (eventData.type === "error") {
+                throw new Error(eventData.message || "Analysis failed");
               }
             } catch (parseError) {
-              console.warn('Failed to parse event:', parseError)
+              console.warn("Failed to parse event:", parseError);
             }
           }
         }
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred'
-      setError(errorMessage)
-      setCurrentStep('Analysis failed')
+      const errorMessage =
+        err instanceof Error ? err.message : "An unexpected error occurred";
+      setError(errorMessage);
+      setCurrentStep("Analysis failed");
     } finally {
-      setIsAnalyzing(false)
+      setIsAnalyzing(false);
     }
-  }
+  };
 
   const onSubmit = (values: FormValues) => {
-    analyzeCompetitor(values)
-  }
+    analyzeCompetitor(values);
+  };
 
   const handleDemoScenario = (name: string, website: string) => {
     form.setValue('companyName', name)
@@ -991,5 +992,5 @@ export default function CompetitiveIntelligenceForm({
       {/* Footer */}
       <Footer />
     </div>
-  )
+  );
 }

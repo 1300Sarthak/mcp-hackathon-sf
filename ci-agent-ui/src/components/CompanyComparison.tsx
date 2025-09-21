@@ -1,29 +1,29 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
-import { Card, CardContent } from './ui/card'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card'
 import { Badge } from './ui/badge'
+import { Progress } from './ui/progress'
 import { Alert, AlertDescription } from './ui/alert'
 import { 
   Search, 
-  Loader2, 
-  CheckCircle,
+  CheckCircle, 
   AlertCircle,
-  TrendingUp,
-  Target,
-  Building,
-  Users,
-  DollarSign,
-  BarChart3,
-  Zap
+  Activity,
+  Brain,
+  FileText,
+  Loader2,
+  ArrowLeft,
+  Send,
+  MessageSquare,
+  X
 } from 'lucide-react'
+import MarkdownRenderer from './MarkdownRenderer'
+import CompetitiveDashboard from './CompetitiveDashboard'
+import CompanySearchCard from './CompanySearchCard'
 
-interface CompanyComparisonProps {
-  onBack?: () => void
-}
-
-interface CompanyData {
-  name: string
+interface AnalysisResult {
+  competitor: string
   website?: string
   research_findings: string
   strategic_analysis: string
@@ -43,542 +43,659 @@ interface CompanyData {
       threats?: number
     }
   }
+  timestamp: string
+  status: string
+  workflow: string
 }
 
-interface ComparisonResult {
-  company1: CompanyData
-  company2: CompanyData
-  comparison_analysis: string
-  competitive_positioning: string
-  market_dynamics: string
-  strategic_recommendations: string
+interface CompanyAnalysisState {
+  isAnalyzing: boolean
+  progress: number
+  currentStep: string
+  result: AnalysisResult | null
+  error: string | null
 }
 
 const API_BASE_URL = 'http://localhost:8000'
 
-export default function CompanyComparison({ onBack }: CompanyComparisonProps) {
-  const [company1, setCompany1] = useState('')
-  const [company1Website, setCompany1Website] = useState('')
-  const [company2, setCompany2] = useState('')
-  const [company2Website, setCompany2Website] = useState('')
-  const [isComparing, setIsComparing] = useState(false)
-  const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [progress, setProgress] = useState(0)
-  const [currentStep, setCurrentStep] = useState('')
+interface CompanyComparisonProps {
+  onBack: () => void
+  initialCompany1?: string
+  initialCompany2?: string
+}
 
-  const handleCompare = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!company1.trim() || !company2.trim()) return
+export default function CompanyComparison({ onBack, initialCompany1, initialCompany2 }: CompanyComparisonProps) {
+  const [company1, setCompany1] = useState<CompanyAnalysisState>({
+    isAnalyzing: false,
+    progress: 0,
+    currentStep: '',
+    result: null,
+    error: null
+  })
+  
+  const [company2, setCompany2] = useState<CompanyAnalysisState>({
+    isAnalyzing: false,
+    progress: 0,
+    currentStep: '',
+    result: null,
+    error: null
+  })
 
-    setIsComparing(true)
-    setProgress(0)
-    setCurrentStep('Initializing comparison...')
-    setComparisonResult(null)
-    setError(null)
+  const [chatMessages, setChatMessages] = useState<Array<{type: 'user' | 'bot', message: string}>>([])
+  const [chatInput, setChatInput] = useState('')
+  const [isChatLoading, setIsChatLoading] = useState(false)
+
+  // Auto-analyze initial companies if provided
+  useEffect(() => {
+    if (initialCompany1 && !company1.result && !company1.isAnalyzing) {
+      analyzeCompany(initialCompany1, '', 'company1')
+    }
+    if (initialCompany2 && !company2.result && !company2.isAnalyzing) {
+      analyzeCompany(initialCompany2, '', 'company2')
+    }
+  }, [initialCompany1, initialCompany2])
+
+  const analyzeCompany = async (companyName: string, companyUrl: string, slot: 'company1' | 'company2') => {
+    const setState = slot === 'company1' ? setCompany1 : setCompany2
+    
+    setState(prev => ({
+      ...prev,
+      isAnalyzing: true,
+      progress: 0,
+      currentStep: 'Starting analysis...',
+      error: null
+    }))
 
     try {
-      // First, analyze both companies individually
-      setCurrentStep('Analyzing first company...')
-      setProgress(20)
-      
-      const company1Response = await fetch(`${API_BASE_URL}/analyze`, {
+      const response = await fetch(`${API_BASE_URL}/analyze/stream`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          competitor_name: company1,
-          competitor_website: company1Website || undefined,
-          niche: 'all',
-          stream: false
-        }),
-      })
-
-      if (!company1Response.ok) {
-        throw new Error(`Failed to analyze ${company1}`)
-      }
-
-      const company1Data = await company1Response.json()
-      setProgress(50)
-      setCurrentStep('Analyzing second company...')
-
-      const company2Response = await fetch(`${API_BASE_URL}/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          competitor_name: company2,
-          competitor_website: company2Website || undefined,
-          niche: 'all',
-          stream: false
-        }),
-      })
-
-      if (!company2Response.ok) {
-        throw new Error(`Failed to analyze ${company2}`)
-      }
-
-      const company2Data = await company2Response.json()
-      setProgress(80)
-      setCurrentStep('Generating comparison analysis...')
-
-      // Generate comparison analysis using the discovery endpoint with a special prompt
-      const comparisonResponse = await fetch(`${API_BASE_URL}/discover/competitors`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          business_idea: `Compare and contrast ${company1} vs ${company2}. Analyze their competitive positioning, market dynamics, strengths/weaknesses relative to each other, and provide strategic recommendations for how each company could better compete against the other.
-
-          Company 1 Data: ${JSON.stringify(company1Data)}
-          Company 2 Data: ${JSON.stringify(company2Data)}`,
-          stream: false
-        }),
-      })
-
-      if (!comparisonResponse.ok) {
-        throw new Error('Failed to generate comparison analysis')
-      }
-
-      const comparisonData = await comparisonResponse.json()
-      setProgress(100)
-      setCurrentStep('Comparison complete!')
-
-      // Structure the final result
-      const result: ComparisonResult = {
-        company1: {
-          name: company1Data.competitor,
-          website: company1Data.website,
-          research_findings: company1Data.research_findings,
-          strategic_analysis: company1Data.strategic_analysis,
-          final_report: company1Data.final_report,
-          metrics: company1Data.metrics
+        headers: {
+          'Content-Type': 'application/json'
         },
-        company2: {
-          name: company2Data.competitor,
-          website: company2Data.website,
-          research_findings: company2Data.research_findings,
-          strategic_analysis: company2Data.strategic_analysis,
-          final_report: company2Data.final_report,
-          metrics: company2Data.metrics
-        },
-        comparison_analysis: comparisonData.discovery_report,
-        competitive_positioning: comparisonData.competitive_analysis,
-        market_dynamics: comparisonData.competitors_found,
-        strategic_recommendations: comparisonData.discovery_report
+        body: JSON.stringify({
+          competitor_name: companyName,
+          competitor_website: companyUrl || undefined,
+          stream: true
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
 
-      setComparisonResult(result)
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('No reader available')
 
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred'
-      setError(errorMessage)
-      setCurrentStep('Comparison failed')
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              handleStreamEvent(data, setState)
+            } catch (e) {
+              console.error('Error parsing stream data:', e)
+            }
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error('Analysis failed:', error)
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Analysis failed',
+        isAnalyzing: false
+      }))
+    }
+  }
+
+  const handleStreamEvent = (event: any, setState: React.Dispatch<React.SetStateAction<CompanyAnalysisState>>) => {
+    switch (event.type) {
+      case 'session_start':
+        setState(prev => ({ ...prev, currentStep: 'Initializing analysis...', progress: 5 }))
+        break
+      case 'status_update':
+        if (event.message) {
+          setState(prev => ({ ...prev, currentStep: event.message }))
+          // Update progress based on step
+          if (event.step === 'research_start') setState(prev => ({ ...prev, progress: 20 }))
+          else if (event.step === 'research_complete') setState(prev => ({ ...prev, progress: 40 }))
+          else if (event.step === 'analysis_start') setState(prev => ({ ...prev, progress: 60 }))
+          else if (event.step === 'analysis_complete') setState(prev => ({ ...prev, progress: 80 }))
+          else if (event.step === 'report_start') setState(prev => ({ ...prev, progress: 90 }))
+        }
+        break
+      case 'tool_call':
+        if (event.tool_name) {
+          setState(prev => ({ ...prev, currentStep: `Using ${event.tool_name}...` }))
+        }
+        break
+      case 'complete':
+        if (event.data) {
+          setState(prev => ({
+            ...prev,
+            result: event.data,
+            progress: 100,
+            currentStep: 'Analysis complete!',
+            isAnalyzing: false
+          }))
+        }
+        break
+      case 'error':
+        setState(prev => ({
+          ...prev,
+          error: event.message || 'An error occurred during analysis',
+          isAnalyzing: false
+        }))
+        break
+    }
+  }
+
+  const handleSearch1 = (opts: { company: string; url?: string; section: string }) => {
+    analyzeCompany(opts.company, opts.url || '', 'company1')
+  }
+
+  const handleSearch2 = (opts: { company: string; url?: string; section: string }) => {
+    analyzeCompany(opts.company, opts.url || '', 'company2')
+  }
+
+  const handleChatMessage = async () => {
+    if (!chatInput.trim() || isChatLoading) return
+
+    const userMessage = chatInput.trim()
+    setChatInput('')
+    setChatMessages(prev => [...prev, { type: 'user', message: userMessage }])
+    setIsChatLoading(true)
+
+    try {
+      // Create context from both companies for the RAG query
+      const companies = [company1.result?.competitor, company2.result?.competitor].filter(Boolean)
+      const contextualQuery = companies.length > 0 
+        ? `Regarding the analysis of ${companies.join(' and ')}: ${userMessage}`
+        : userMessage
+
+      const response = await fetch('http://localhost:8001/rag/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: contextualQuery
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setChatMessages(prev => [...prev, { type: 'bot', message: data.response }])
+      } else {
+        setChatMessages(prev => [...prev, { type: 'bot', message: 'Sorry, I encountered an error processing your question.' }])
+      }
+    } catch (error) {
+      console.error('Chat error:', error)
+      setChatMessages(prev => [...prev, { type: 'bot', message: 'Sorry, I\'m unable to answer right now. Please try again later.' }])
     } finally {
-      setIsComparing(false)
+      setIsChatLoading(false)
     }
   }
 
-  const getMetricComparison = (metric: keyof NonNullable<CompanyData['metrics']>['competitive_metrics'], label: string) => {
-    const company1Value = comparisonResult?.company1.metrics?.competitive_metrics?.[metric] || 0
-    const company2Value = comparisonResult?.company2.metrics?.competitive_metrics?.[metric] || 0
-    
-    return {
-      company1Value,
-      company2Value,
-      winner: company1Value > company2Value ? 'company1' : company2Value > company1Value ? 'company2' : 'tie',
-      label
+  const getStepIcon = (step: string) => {
+    if (step.includes('research') || step.includes('Research')) {
+      return <Brain className="h-4 w-4 animate-pulse" style={{ color: '#facc15' }} />
+    } else if (step.includes('analy') || step.includes('Analy')) {
+      return <Activity className="h-4 w-4 animate-pulse" style={{ color: '#facc15' }} />
+    } else if (step.includes('report') || step.includes('Report') || step.includes('writ')) {
+      return <FileText className="h-4 w-4 animate-pulse" style={{ color: '#facc15' }} />
+    } else {
+      return <Search className="h-4 w-4 animate-pulse" style={{ color: '#facc15' }} />
     }
   }
 
-  return (
-    <div 
-      className="min-h-screen"
-      style={{ 
-        backgroundColor: '#0a0a0a',
-        fontFamily: 'Inter, sans-serif'
-      }}
-    >
-      {/* Header */}
-      <div className="max-w-7xl mx-auto px-4 pt-8">
-        <div className="text-center mb-8">
-          {onBack && (
-            <div className="text-left mb-4">
-              <button
-                onClick={onBack}
-                className="text-sm px-4 py-2 rounded-full border transition-colors duration-200 hover:bg-gray-800"
-                style={{
-                  color: '#f9f9f9',
-                  borderColor: '#262626',
-                  backgroundColor: 'transparent'
-                }}
-              >
-                ← Back
-              </button>
-            </div>
-          )}
-          
-          <h1 className="text-4xl md:text-5xl font-bold mb-6" style={{ color: '#f9f9f9' }}>
-            Company Comparison
-          </h1>
-          <p className="text-gray-400 max-w-2xl mx-auto">
-            Compare two companies side-by-side with comprehensive competitive analysis
-          </p>
-        </div>
-
-        {/* Comparison Form */}
-        {!comparisonResult && (
-          <form onSubmit={handleCompare} className="w-full max-w-4xl mx-auto mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              {/* Company 1 */}
-              <Card 
-                className="border-0 shadow-lg"
-                style={{
-                  backgroundColor: '#1a1a1a',
-                  borderColor: '#262626',
-                  boxShadow: '0 0 12px rgba(0,0,0,0.6)'
-                }}
-              >
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-4" style={{ color: '#f9f9f9' }}>
-                    Company 1
-                  </h3>
-                  <div className="space-y-4">
-                    <Input
-                      type="text"
-                      value={company1}
-                      onChange={(e) => setCompany1(e.target.value)}
-                      placeholder="Enter first company name..."
-                      className="w-full"
-                      style={{
-                        backgroundColor: '#111827',
-                        borderColor: '#374151',
-                        color: '#f9f9f9'
-                      }}
-                      required
-                    />
-                    <Input
-                      type="url"
-                      value={company1Website}
-                      onChange={(e) => setCompany1Website(e.target.value)}
-                      placeholder="https://company1.com (optional)"
-                      className="w-full"
-                      style={{
-                        backgroundColor: '#111827',
-                        borderColor: '#374151',
-                        color: '#f9f9f9'
-                      }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Company 2 */}
-              <Card 
-                className="border-0 shadow-lg"
-                style={{
-                  backgroundColor: '#1a1a1a',
-                  borderColor: '#262626',
-                  boxShadow: '0 0 12px rgba(0,0,0,0.6)'
-                }}
-              >
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-4" style={{ color: '#f9f9f9' }}>
-                    Company 2
-                  </h3>
-                  <div className="space-y-4">
-                    <Input
-                      type="text"
-                      value={company2}
-                      onChange={(e) => setCompany2(e.target.value)}
-                      placeholder="Enter second company name..."
-                      className="w-full"
-                      style={{
-                        backgroundColor: '#111827',
-                        borderColor: '#374151',
-                        color: '#f9f9f9'
-                      }}
-                      required
-                    />
-                    <Input
-                      type="url"
-                      value={company2Website}
-                      onChange={(e) => setCompany2Website(e.target.value)}
-                      placeholder="https://company2.com (optional)"
-                      className="w-full"
-                      style={{
-                        backgroundColor: '#111827',
-                        borderColor: '#374151',
-                        color: '#f9f9f9'
-                      }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Compare Button */}
-            <div className="text-center">
-              <Button
-                type="submit"
-                disabled={!company1.trim() || !company2.trim() || isComparing}
-                className="px-8 py-3 text-lg font-medium transition-all duration-200 disabled:opacity-50 hover:brightness-110 hover:scale-105"
-                style={{
-                  backgroundColor: (!company1.trim() || !company2.trim() || isComparing) ? '#6b7280' : '#facc15',
-                  color: '#0a0a0a',
-                  borderRadius: '9999px',
-                  boxShadow: (!company1.trim() || !company2.trim() || isComparing) ? '0 2px 8px rgba(107,114,128,0.4)' : '0 2px 8px rgba(250,204,21,0.4)'
-                }}
-              >
-                {isComparing ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Comparing Companies...
-                  </>
-                ) : (
-                  <>
-                    <BarChart3 className="w-5 h-5 mr-2" />
-                    Compare Companies
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        )}
-
-        {/* Progress */}
-        {isComparing && (
-          <Card 
-            className="border-0 shadow-lg mb-8"
+  const CompanyColumn = ({ 
+    companyState, 
+    onSearch, 
+    title, 
+    placeholder 
+  }: { 
+    companyState: CompanyAnalysisState
+    onSearch: (opts: { company: string; url?: string; section: string }) => void
+    title: string
+    placeholder: string
+  }) => (
+    <div className="space-y-6">
+      {/* Search Bar */}
+      <Card 
+        className="border shadow-xl"
+        style={{
+          backgroundColor: '#1a1a1a !important',
+          borderColor: '#262626 !important',
+          borderRadius: '12px',
+          boxShadow: '0 0 12px rgba(0,0,0,0.6)',
+          border: '1px solid #262626'
+        }}
+      >
+        <CardHeader>
+          <CardTitle 
             style={{
-              backgroundColor: '#1a1a1a',
-              borderColor: '#262626'
+              fontSize: '18px',
+              fontWeight: 700,
+              color: '#f9f9f9 !important'
             }}
           >
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3" style={{ color: '#f9f9f9' }}>
-                    <Loader2 className="w-5 h-5 animate-spin text-yellow-400" />
-                    <span className="font-medium text-sm">{currentStep}</span>
-                  </div>
-                  <Badge 
-                    variant="outline" 
-                    className="border-yellow-400 text-yellow-400 bg-yellow-400/10"
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CompanySearchCard onAnalyze={onSearch} placeholder={placeholder} />
+        </CardContent>
+      </Card>
+
+      {/* Progress */}
+      {companyState.isAnalyzing && (
+        <Card 
+          className="border shadow-lg"
+          style={{
+            backgroundColor: '#1a1a1a !important',
+            borderColor: '#262626 !important',
+            borderRadius: '12px',
+            border: '1px solid #262626'
+          }}
+        >
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  {getStepIcon(companyState.currentStep)}
+                  <span 
+                    className="font-medium text-sm"
+                    style={{ color: '#f9f9f9 !important' }}
                   >
-                    {progress}%
-                  </Badge>
+                    {companyState.currentStep}
+                  </span>
                 </div>
-                <div className="relative">
-                  <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-yellow-400 to-yellow-500 transition-all duration-500 ease-out rounded-full"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                </div>
+                <Badge 
+                  variant="outline" 
+                  style={{
+                    backgroundColor: '#facc1520 !important',
+                    color: '#facc15 !important',
+                    borderColor: '#facc15 !important',
+                    borderRadius: '6px',
+                    border: '1px solid #facc15'
+                  }}
+                >
+                  {companyState.progress}%
+                </Badge>
+              </div>
+              <Progress value={companyState.progress} className="h-2" />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error */}
+      {companyState.error && (
+        <Alert 
+          className="border"
+          style={{
+            backgroundColor: '#1a0a0a !important',
+            borderColor: '#ef4444 !important',
+            borderRadius: '12px',
+            border: '1px solid #ef4444'
+          }}
+        >
+          <AlertCircle className="h-4 w-4" style={{ color: '#ef4444' }} />
+          <AlertDescription style={{ color: '#ef4444 !important' }}>
+            {companyState.error}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Results */}
+      {companyState.result && (
+        <div className="space-y-6">
+          {/* Metrics */}
+          <Card 
+            className="border shadow-xl"
+            style={{
+              backgroundColor: '#1a1a1a !important',
+              borderColor: '#262626 !important',
+              borderRadius: '12px',
+              border: '1px solid #262626'
+            }}
+          >
+            <CardHeader>
+              <CardTitle 
+                className="flex items-center space-x-2"
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: '#f9f9f9 !important'
+                }}
+              >
+                <CheckCircle className="h-5 w-5" style={{ color: '#22c55e' }} />
+                <span>{companyState.result.competitor}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {companyState.result.metrics && (
+                <CompetitiveDashboard 
+                  data={{
+                    competitor: companyState.result.competitor,
+                    competitive_metrics: companyState.result.metrics.competitive_metrics,
+                    swot_scores: companyState.result.metrics.swot_scores
+                  }}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Executive Report */}
+          <Card 
+            className="border shadow-xl"
+            style={{
+              backgroundColor: '#1a1a1a !important',
+              borderColor: '#262626 !important',
+              borderRadius: '12px',
+              border: '1px solid #262626'
+            }}
+          >
+            <CardHeader>
+              <CardTitle 
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: '#f9f9f9 !important'
+                }}
+              >
+                📝 Executive Report
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div 
+                className="p-4 rounded-lg max-h-96 overflow-y-auto"
+                style={{
+                  backgroundColor: '#111111 !important',
+                  borderRadius: '8px'
+                }}
+              >
+                <MarkdownRenderer content={companyState.result.final_report} />
               </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Error Display */}
-        {error && (
-          <Alert 
-            className="border-red-600 bg-red-900/20 mb-8"
-            style={{ borderColor: '#dc2626', backgroundColor: 'rgba(127, 29, 29, 0.2)' }}
-          >
-            <AlertCircle className="h-4 w-4 text-red-400" />
-            <AlertDescription className="text-red-300">
-              {error}
-            </AlertDescription>
-          </Alert>
-        )}
+          {/* Expandable Sections */}
+          <details className="group">
+            <summary 
+              className="cursor-pointer font-medium hover:text-gray-300 flex items-center transition-colors duration-200"
+              style={{
+                fontSize: '14px',
+                fontWeight: 600,
+                color: '#f9f9f9 !important'
+              }}
+            >
+              <Brain className="h-4 w-4 mr-2" style={{ color: '#facc15' }} />
+              Research Findings
+            </summary>
+            <Card 
+              className="mt-2 border"
+              style={{
+                backgroundColor: '#1a1a1a !important',
+                borderColor: '#262626 !important',
+                borderRadius: '8px',
+                border: '1px solid #262626'
+              }}
+            >
+              <CardContent className="pt-4">
+                <div 
+                  className="p-4 rounded-lg max-h-60 overflow-y-auto"
+                  style={{
+                    backgroundColor: '#111111 !important',
+                    borderRadius: '6px'
+                  }}
+                >
+                  <MarkdownRenderer content={companyState.result.research_findings} />
+                </div>
+              </CardContent>
+            </Card>
+          </details>
 
-        {/* Comparison Results */}
-        {comparisonResult && (
-          <div className="space-y-8">
-            {/* Success Header */}
-            <div className="text-center">
-              <div className="flex items-center justify-center space-x-2 mb-4">
-                <CheckCircle className="h-6 w-6 text-green-400" />
-                <h2 className="text-2xl font-bold" style={{ color: '#f9f9f9' }}>
-                  Comparison Complete
-                </h2>
-              </div>
-              <p className="text-gray-400">
-                Detailed analysis comparing {comparisonResult.company1.name} vs {comparisonResult.company2.name}
-              </p>
-            </div>
+          <details className="group">
+            <summary 
+              className="cursor-pointer font-medium hover:text-gray-300 flex items-center transition-colors duration-200"
+              style={{
+                fontSize: '14px',
+                fontWeight: 600,
+                color: '#f9f9f9 !important'
+              }}
+            >
+              <Activity className="h-4 w-4 mr-2" style={{ color: '#facc15' }} />
+              Strategic Analysis
+            </summary>
+            <Card 
+              className="mt-2 border"
+              style={{
+                backgroundColor: '#1a1a1a !important',
+                borderColor: '#262626 !important',
+                borderRadius: '8px',
+                border: '1px solid #262626'
+              }}
+            >
+              <CardContent className="pt-4">
+                <div 
+                  className="p-4 rounded-lg max-h-60 overflow-y-auto"
+                  style={{
+                    backgroundColor: '#111111 !important',
+                    borderRadius: '6px'
+                  }}
+                >
+                  <MarkdownRenderer content={companyState.result.strategic_analysis} />
+                </div>
+              </CardContent>
+            </Card>
+          </details>
+        </div>
+      )}
+    </div>
+  )
 
-            {/* Metrics Comparison */}
-            {comparisonResult.company1.metrics && comparisonResult.company2.metrics && (
-              <Card 
-                className="border-0 shadow-lg"
+  return (
+    <>
+      {/* Global dark theme override */}
+      <style>{`
+        body {
+          background-color: #0a0a0a !important;
+          color: #f9f9f9 !important;
+        }
+        html {
+          background-color: #0a0a0a !important;
+        }
+      `}</style>
+      
+      <div 
+        className="min-h-screen w-full dark"
+        style={{ 
+          backgroundColor: '#0a0a0a !important',
+          fontFamily: 'Inter, sans-serif',
+          color: '#f9f9f9 !important',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          overflowY: 'auto',
+          '--background': '#0a0a0a',
+          '--foreground': '#f9f9f9',
+          '--card': '#1a1a1a',
+          '--card-foreground': '#f9f9f9',
+          '--border': '#262626',
+          '--accent': '#facc15',
+          '--accent-foreground': '#0a0a0a',
+          '--muted': '#111111',
+          '--muted-foreground': '#a1a1aa'
+        } as React.CSSProperties}
+      >
+        {/* Header */}
+        <div className="w-full border-b" style={{ borderColor: '#262626', backgroundColor: '#0a0a0a' }}>
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <Button
+                onClick={onBack}
+                variant="ghost"
+                size="sm"
+                className="transition-colors duration-200"
                 style={{
-                  backgroundColor: '#1a1a1a',
-                  borderColor: '#262626',
-                  boxShadow: '0 0 12px rgba(0,0,0,0.6)'
+                  color: '#a1a1aa',
+                  backgroundColor: 'transparent'
                 }}
               >
-                <CardContent className="p-8">
-                  <h3 className="text-xl font-semibold mb-6" style={{ color: '#f9f9f9' }}>
-                    Competitive Metrics Comparison
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[
-                      { key: 'market_position' as const, label: 'Market Position', icon: Target },
-                      { key: 'innovation' as const, label: 'Innovation', icon: Zap },
-                      { key: 'financial_strength' as const, label: 'Financial Strength', icon: DollarSign },
-                      { key: 'brand_recognition' as const, label: 'Brand Recognition', icon: TrendingUp },
-                    ].map(({ key, label, icon: Icon }) => {
-                      const comparison = getMetricComparison(key, label)
-                      return (
-                        <div key={key} className="text-center">
-                          <Icon className="w-6 h-6 mx-auto mb-2 text-yellow-400" />
-                          <h4 className="font-medium text-white mb-3">{label}</h4>
-                          
-                          <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-400">{comparisonResult.company1.name}</span>
-                              <div className="flex items-center space-x-2">
-                                <span className={`font-bold ${comparison.winner === 'company1' ? 'text-green-400' : 'text-gray-400'}`}>
-                                  {comparison.company1Value}/10
-                                </span>
-                                {comparison.winner === 'company1' && <CheckCircle className="w-4 h-4 text-green-400" />}
-                              </div>
-                            </div>
-                            
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-400">{comparisonResult.company2.name}</span>
-                              <div className="flex items-center space-x-2">
-                                <span className={`font-bold ${comparison.winner === 'company2' ? 'text-green-400' : 'text-gray-400'}`}>
-                                  {comparison.company2Value}/10
-                                </span>
-                                {comparison.winner === 'company2' && <CheckCircle className="w-4 h-4 text-green-400" />}
-                              </div>
-                            </div>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Dashboard
+              </Button>
+              
+              <h1 
+                className="font-bold text-center"
+                style={{
+                  fontSize: '24px',
+                  fontWeight: 700,
+                  color: '#f9f9f9'
+                }}
+              >
+                Company Comparison
+              </h1>
+              
+              <div></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content - Side by Side Comparison */}
+        <div className="max-w-7xl mx-auto p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Company 1 Column */}
+            <CompanyColumn
+              companyState={company1}
+              onSearch={handleSearch1}
+              title="🏢 Company 1"
+              placeholder="Enter first company name..."
+            />
+
+            {/* Company 2 Column */}
+            <CompanyColumn
+              companyState={company2}
+              onSearch={handleSearch2}
+              title="🏢 Company 2"
+              placeholder="Enter second company name..."
+            />
+          </div>
+        </div>
+
+        {/* Shared Chatbot at Bottom */}
+        {(company1.result || company2.result) && (
+          <div className="border-t" style={{ borderColor: '#262626', backgroundColor: '#0a0a0a' }}>
+            <div className="max-w-7xl mx-auto p-6">
+              <Card 
+                className="border shadow-xl"
+                style={{
+                  backgroundColor: '#1a1a1a !important',
+                  borderColor: '#262626 !important',
+                  borderRadius: '12px',
+                  boxShadow: '0 0 12px rgba(0,0,0,0.6)',
+                  border: '1px solid #262626'
+                }}
+              >
+                <CardHeader>
+                  <CardTitle 
+                    className="flex items-center space-x-2"
+                    style={{
+                      fontSize: '18px',
+                      fontWeight: 700,
+                      color: '#f9f9f9 !important'
+                    }}
+                  >
+                    <MessageSquare className="h-5 w-5" style={{ color: '#facc15' }} />
+                    <span>
+                      Ask Questions About {[company1.result?.competitor, company2.result?.competitor].filter(Boolean).join(' vs ')}
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Chat Messages */}
+                  {chatMessages.length > 0 && (
+                    <div className="space-y-4 mb-4 max-h-60 overflow-y-auto">
+                      {chatMessages.map((msg, index) => (
+                        <div 
+                          key={index}
+                          className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div 
+                            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                              msg.type === 'user' 
+                                ? 'text-right' 
+                                : 'text-left'
+                            }`}
+                            style={{
+                              backgroundColor: msg.type === 'user' ? '#facc15' : '#111111',
+                              color: msg.type === 'user' ? '#0a0a0a' : '#f9f9f9',
+                              borderRadius: '12px'
+                            }}
+                          >
+                            <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
                           </div>
                         </div>
-                      )
-                    })}
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Chat Input */}
+                  <div className="flex space-x-4">
+                    <Input
+                      placeholder="Compare strategies, ask about competitive positioning, market advantages..."
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleChatMessage()}
+                      disabled={isChatLoading}
+                      style={{
+                        backgroundColor: '#111111 !important',
+                        borderColor: '#262626 !important',
+                        borderRadius: '6px',
+                        color: '#f9f9f9 !important',
+                        fontSize: '14px',
+                        border: '1px solid #262626'
+                      }}
+                    />
+                    <Button
+                      onClick={handleChatMessage}
+                      disabled={!chatInput.trim() || isChatLoading}
+                      style={{
+                        backgroundColor: '#facc15 !important',
+                        color: '#0a0a0a !important',
+                        borderRadius: '6px',
+                        fontWeight: 600,
+                        border: 'none'
+                      }}
+                    >
+                      {isChatLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            )}
-
-            {/* Detailed Comparison Analysis */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              {/* Comparison Analysis */}
-              <Card 
-                className="border-0 shadow-lg"
-                style={{
-                  backgroundColor: '#1a1a1a',
-                  borderColor: '#262626',
-                  boxShadow: '0 0 12px rgba(0,0,0,0.6)'
-                }}
-              >
-                <CardContent className="p-8">
-                  <h3 className="text-xl font-semibold mb-6" style={{ color: '#f9f9f9' }}>
-                    Competitive Analysis
-                  </h3>
-                  <div className="prose prose-invert max-w-none" style={{ color: '#f9f9f9', lineHeight: '1.7' }}>
-                    <pre className="whitespace-pre-wrap text-gray-300 font-sans">
-                      {comparisonResult.comparison_analysis}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Strategic Recommendations */}
-              <Card 
-                className="border-0 shadow-lg"
-                style={{
-                  backgroundColor: '#1a1a1a',
-                  borderColor: '#262626',
-                  boxShadow: '0 0 12px rgba(0,0,0,0.6)'
-                }}
-              >
-                <CardContent className="p-8">
-                  <h3 className="text-xl font-semibold mb-6" style={{ color: '#f9f9f9' }}>
-                    Strategic Recommendations
-                  </h3>
-                  <div className="prose prose-invert max-w-none" style={{ color: '#f9f9f9', lineHeight: '1.7' }}>
-                    <pre className="whitespace-pre-wrap text-gray-300 font-sans">
-                      {comparisonResult.strategic_recommendations}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Individual Company Reports */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              {/* Company 1 Report */}
-              <Card 
-                className="border-0 shadow-lg"
-                style={{
-                  backgroundColor: '#1a1a1a',
-                  borderColor: '#262626',
-                  boxShadow: '0 0 12px rgba(0,0,0,0.6)'
-                }}
-              >
-                <CardContent className="p-8">
-                  <h3 className="text-xl font-semibold mb-6" style={{ color: '#f9f9f9' }}>
-                    {comparisonResult.company1.name} Analysis
-                  </h3>
-                  <div className="prose prose-invert max-w-none" style={{ color: '#f9f9f9', lineHeight: '1.7' }}>
-                    <pre className="whitespace-pre-wrap text-gray-300 font-sans text-sm">
-                      {comparisonResult.company1.final_report.substring(0, 1000)}...
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Company 2 Report */}
-              <Card 
-                className="border-0 shadow-lg"
-                style={{
-                  backgroundColor: '#1a1a1a',
-                  borderColor: '#262626',
-                  boxShadow: '0 0 12px rgba(0,0,0,0.6)'
-                }}
-              >
-                <CardContent className="p-8">
-                  <h3 className="text-xl font-semibold mb-6" style={{ color: '#f9f9f9' }}>
-                    {comparisonResult.company2.name} Analysis
-                  </h3>
-                  <div className="prose prose-invert max-w-none" style={{ color: '#f9f9f9', lineHeight: '1.7' }}>
-                    <pre className="whitespace-pre-wrap text-gray-300 font-sans text-sm">
-                      {comparisonResult.company2.final_report.substring(0, 1000)}...
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* New Comparison Button */}
-            <div className="text-center pt-8">
-              <Button
-                onClick={() => {
-                  setComparisonResult(null)
-                  setCompany1('')
-                  setCompany1Website('')
-                  setCompany2('')
-                  setCompany2Website('')
-                  setError(null)
-                }}
-                className="px-6 py-2 font-medium transition-all duration-200 hover:brightness-110"
-                style={{
-                  backgroundColor: '#facc15',
-                  color: '#0a0a0a',
-                  borderRadius: '9999px'
-                }}
-              >
-                Compare Different Companies
-              </Button>
             </div>
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 }
