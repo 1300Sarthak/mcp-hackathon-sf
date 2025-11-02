@@ -5,14 +5,15 @@ import CompareCompaniesForm from './CompareCompaniesForm'
 import Footer from './Footer'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
-import { Search, Compass, GitCompare } from 'lucide-react'
+import { Search, Compass, GitCompare, ArrowLeft } from 'lucide-react'
 
 interface LandingPageProps {
   onAnalyze: (opts: { company: string; url?: string; section: string }) => void
   onCompare: (company1?: string, company2?: string, section?: string) => void
+  onBackToMarketing?: () => void
 }
 
-export default function LandingPage({ onAnalyze, onCompare }: LandingPageProps) {
+export default function LandingPage({ onAnalyze, onCompare, onBackToMarketing }: LandingPageProps) {
   const [mode, setMode] = useState<'analyze' | 'discover' | 'compare'>('analyze')
 
   return (
@@ -50,21 +51,22 @@ export default function LandingPage({ onAnalyze, onCompare }: LandingPageProps) 
             </div>
 
             {/* Navigation Links */}
-            <div className="hidden md:flex items-center space-x-4">
-              <Button
-                className="font-bold transition-all duration-200 hover:brightness-110 hover:scale-105"
-                style={{
-                  backgroundColor: '#facc15',
-                  color: '#0a0a0a',
-                  borderRadius: '9999px',
-                  padding: '8px 16px',
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  boxShadow: '0 2px 8px rgba(250,204,21,0.4)'
-                }}
-              >
-                Get Started
-              </Button>
+            <div className="flex items-center space-x-4">
+              {onBackToMarketing && (
+                <Button
+                  onClick={onBackToMarketing}
+                  variant="ghost"
+                  className="transition-all duration-200 hover:brightness-110"
+                  style={{
+                    color: '#a1a1aa',
+                    backgroundColor: 'transparent',
+                    borderRadius: '9999px'
+                  }}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Back</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>

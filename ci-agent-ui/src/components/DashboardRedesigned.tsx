@@ -9,6 +9,7 @@ import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
 import { Separator } from './ui/separator'
 import { Alert, AlertDescription } from './ui/alert'
+import { isMockCompany, generateMockStreamEvents } from '../utils/mockData'
 import { 
   Form, 
   FormControl, 
@@ -32,13 +33,17 @@ import {
   ArrowLeft,
   GitCompare,
   Send,
-  MessageSquare
+  MessageSquare,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react'
 import DemoScenarios from './DemoScenarios'
 import MarkdownRenderer from './MarkdownRenderer'
 import CompetitiveDashboard from './CompetitiveDashboard'
 import CompanySearchCard from './CompanySearchCard'
 import AnalysisModeToggle, { type AnalysisMode } from './AnalysisModeToggle'
+import MetricsCard from './MetricsCard'
+import { API_BASE_URL } from '../config/api'
 
 // Form validation schema
 const formSchema = z.object({
@@ -79,113 +84,154 @@ interface AnalysisResult {
       threats?: number
     }
   }
-  timestamp: string
-  status: string
-  workflow: string
+  workflow?: string
+  timestamp?: string
 }
-
-const API_BASE_URL = 'http://localhost:8002' // Enhanced API with modes
 
 interface DashboardProps {
-  company: string
-  jobId?: string
-  analysisMode?: AnalysisMode
+  company: { company: string; url?: string; section: string; analysisMode?: AnalysisMode }
   onBack?: () => void
   onCompare?: () => void
+  analysisMode?: AnalysisMode
+  hideHeader?: boolean
 }
 
-export default function DashboardRedesigned({ company, onBack, onCompare, analysisMode: initialAnalysisMode }: DashboardProps) {
+export default function DashboardRedesigned({ company, onBack, onCompare, analysisMode: initialAnalysisMode, hideHeader = false }: DashboardProps) {
+  // Form for quick re-analysis
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [currentStep, setCurrentStep] = useState('')
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [chatMessages, setChatMessages] = useState<Array<{type: 'user' | 'bot', message: string}>>([])
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>(initialAnalysisMode || 'simple')
+  const [activeTab, setActiveTab] = useState<'outline' | 'research' | 'analysis'>('outline')
+
+  // Chat functionality
+  const [chatMessages, setChatMessages] = useState<Array<{type: 'user' | 'assistant', message: string}>>([])
   const [chatInput, setChatInput] = useState('')
   const [isChatLoading, setIsChatLoading] = useState(false)
-  const [showCompareModal, setShowCompareModal] = useState(false)
-  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>(initialAnalysisMode || 'simple')
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      companyName: company,
-      companyUrl: '',
-    },
-  })
-
-  // Auto-submit when company is provided
+  // Start analysis on mount
   useEffect(() => {
-    if (company && !isAnalyzing && !analysisResult) {
-      setTimeout(() => {
-        analyzeCompetitor({
-          companyName: company,
-          companyUrl: '',
-        })
-      }, 100)
+    console.log('🚀 Dashboard mounted with company prop:', company)
+    if (company && company.company) {
+      analyzeCompetitor({ 
+        companyName: company.company, 
+        companyUrl: company.url || '' 
+      })
+    } else {
+      console.error('❌ Invalid company prop:', company)
     }
-  }, [company, isAnalyzing, analysisResult])
+  }, [company])
 
-  // Handle new search from top search bar
-  const handleNewSearch = (opts: { company: string; url?: string; section: string }) => {
-    // Reset state and start new analysis
-    setAnalysisResult(null)
-    setError(null)
-    setProgress(0)
-    setCurrentStep('')
-    setChatMessages([])
+  const handleStreamEvent = (event: StreamEvent) => {
+    console.log('🔄 handleStreamEvent called:', event.type, event.step || event.message)
     
-    // Update form and start analysis
-    form.setValue('companyName', opts.company)
-    form.setValue('companyUrl', opts.url || '')
-    
-    analyzeCompetitor({
-      companyName: opts.company,
-      companyUrl: opts.url || '',
-    })
+    if (event.type === 'status_update') {
+      if (event.step === 'research_start') {
+        setProgress(10)
+        setCurrentStep('Gathering competitive intelligence...')
+      } else if (event.step === 'research_complete') {
+        setProgress(35)
+        setCurrentStep('Research complete. Starting analysis...')
+      } else if (event.step === 'analysis_start') {
+        setProgress(50)
+        setCurrentStep('Analyzing strategic positioning...')
+      } else if (event.step === 'analysis_complete') {
+        setProgress(75)
+        setCurrentStep('Analysis complete. Generating report...')
+      } else if (event.step === 'report_start') {
+        setProgress(85)
+        setCurrentStep('Compiling executive report...')
+      } else if (event.message) {
+        setCurrentStep(event.message)
+      }
+    } else if (event.type === 'tool_call') {
+      setCurrentStep(`Running: ${event.tool_name || 'AI Tool'}...`)
+    } else if (event.type === 'complete' && event.data) {
+      console.log('✅ Complete event received with data:', event.data)
+      setProgress(100)
+      setCurrentStep('Analysis complete!')
+      setResult(event.data)
+      setIsAnalyzing(false)
+    }
   }
 
-  // Handle chat message
   const handleChatMessage = async () => {
-    if (!chatInput.trim() || isChatLoading) return
+    if (!chatInput.trim() || !result) return
 
-    const userMessage = chatInput.trim()
+    const userMessage = chatInput
     setChatInput('')
     setChatMessages(prev => [...prev, { type: 'user', message: userMessage }])
     setIsChatLoading(true)
 
     try {
-      // Use optimized LlamaIndex RAG query endpoint
-      const response = await fetch(`${API_BASE_URL}/rag/query`, {
+      const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: userMessage,
-          competitor_filter: company // Filter by current company
+          competitor_name: result.competitor,
+          message: userMessage,
+          context: {
+            research_findings: result.research_findings,
+            strategic_analysis: result.strategic_analysis,
+            final_report: result.final_report,
+          }
         })
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        setChatMessages(prev => [...prev, { type: 'bot', message: data.response }])
-      } else {
-        setChatMessages(prev => [...prev, { type: 'bot', message: 'Sorry, I encountered an error processing your question.' }])
+      const data = await response.json()
+      
+      if (data.response) {
+        setChatMessages(prev => [...prev, { type: 'assistant', message: data.response }])
       }
-    } catch (error) {
-      console.error('Chat error:', error)
-      setChatMessages(prev => [...prev, { type: 'bot', message: 'Sorry, I\'m unable to answer right now. Please try again later.' }])
+    } catch (err) {
+      console.error('Chat error:', err)
+      setChatMessages(prev => [...prev, { 
+        type: 'assistant', 
+        message: 'Sorry, I encountered an error processing your question.' 
+      }])
     } finally {
       setIsChatLoading(false)
     }
   }
 
   const analyzeCompetitor = async (values: FormValues) => {
+    console.log('🔍 analyzeCompetitor called with:', values)
+    
+    if (!values.companyName) {
+      console.error('❌ No company name provided!')
+      setError('Company name is required')
+      return
+    }
+    
     setIsAnalyzing(true)
     setProgress(0)
     setCurrentStep('Starting analysis...')
     setError(null)
+
+    // Check if this is a mock company
+    if (isMockCompany(values.companyName)) {
+      console.log('🎭 Mock data detected for:', values.companyName)
+      
+      // Simulate streaming with mock events
+      const mockEvents = generateMockStreamEvents('analysis')
+      console.log('📦 Generated mock events:', mockEvents.length)
+      
+      for (let i = 0; i < mockEvents.length; i++) {
+        const event = mockEvents[i]
+        console.log('📨 Processing mock event:', event.type, event)
+        
+        // Simulate delay between events
+        await new Promise(resolve => setTimeout(resolve, 800))
+        
+        handleStreamEvent(event)
+      }
+      
+      console.log('✅ Mock data processing complete')
+      setIsAnalyzing(false)
+      return
+    }
 
     try {
       const eventSource = new EventSource(`${API_BASE_URL}/analyze/stream`, {
@@ -203,222 +249,186 @@ export default function DashboardRedesigned({ company, onBack, onCompare, analys
         body: JSON.stringify({
           competitor_name: values.companyName,
           competitor_website: values.companyUrl || undefined,
-          analysis_mode: analysisMode,
-          stream: true
+          section: company.section || 'All',
+          stream: true,
+          analysis_mode: analysisMode
         })
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      // The response is a streaming response, handle it
       const reader = response.body?.getReader()
-      if (!reader) throw new Error('No reader available')
-
       const decoder = new TextDecoder()
-      let buffer = ''
 
+      if (!reader) {
+        throw new Error('No response body')
+      }
+
+      let buffer = ''
+      
       while (true) {
         const { done, value } = await reader.read()
+        
         if (done) break
-
+        
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
         buffer = lines.pop() || ''
-
+        
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
-              const data = JSON.parse(line.slice(6))
-              handleStreamEvent(data)
-            } catch (e) {
-              console.error('Error parsing stream data:', e)
+              const event = JSON.parse(line.substring(6))
+              handleStreamEvent(event)
+            } catch (parseError) {
+              console.error('Error parsing event:', parseError)
             }
           }
         }
       }
 
-    } catch (error) {
-      console.error('Analysis failed:', error)
-      setError(error instanceof Error ? error.message : 'Analysis failed')
-    } finally {
+    } catch (err) {
+      console.error('Analysis error:', err)
+      setError(err instanceof Error ? err.message : 'An unknown error occurred')
       setIsAnalyzing(false)
     }
   }
 
-  const handleStreamEvent = (event: StreamEvent) => {
-    console.log('Stream event:', event)
-
-    switch (event.type) {
-      case 'session_start':
-        setCurrentStep('Initializing analysis...')
-        setProgress(5)
-        break
-      case 'status_update':
-        if (event.message) {
-          setCurrentStep(event.message)
-          // Update progress based on step
-          if (event.step === 'research_start') setProgress(20)
-          else if (event.step === 'research_complete') setProgress(40)
-          else if (event.step === 'analysis_start') setProgress(60)
-          else if (event.step === 'analysis_complete') setProgress(80)
-          else if (event.step === 'report_start') setProgress(90)
-        }
-        break
-      case 'tool_call':
-        if (event.tool_name) {
-          setCurrentStep(`Using ${event.tool_name}...`)
-        }
-        break
-      case 'complete':
-        if (event.data) {
-          setAnalysisResult(event.data)
-          setProgress(100)
-          setCurrentStep('Analysis complete!')
-        }
-        break
-      case 'error':
-        setError(event.message || 'An error occurred during analysis')
-        break
-    }
-  }
-
-  const handleDemoScenario = (scenario: { name: string; website: string }) => {
-    form.setValue('companyName', scenario.name)
-    form.setValue('companyUrl', scenario.website)
-    analyzeCompetitor({
-      companyName: scenario.name,
-      companyUrl: scenario.website
+  const handleNewSearch = (opts: { company: string; url?: string; section: string; analysisMode?: AnalysisMode }) => {
+    setResult(null)
+    setChatMessages([])
+    setAnalysisMode(opts.analysisMode || 'simple')
+    analyzeCompetitor({ 
+      companyName: opts.company, 
+      companyUrl: opts.url || '' 
     })
   }
 
-  const onSubmit = (values: FormValues) => {
-    analyzeCompetitor(values)
-  }
-
-  const resetForm = () => {
-    setAnalysisResult(null)
-    setError(null)
-    setProgress(0)
-    setCurrentStep('')
-    setChatMessages([])
-    form.reset()
-  }
-
   const getStepIcon = (step: string) => {
-    if (step.includes('research') || step.includes('Research')) {
-      return <Brain className="h-4 w-4 animate-pulse" style={{ color: '#facc15' }} />
-    } else if (step.includes('analy') || step.includes('Analy')) {
-      return <Activity className="h-4 w-4 animate-pulse" style={{ color: '#facc15' }} />
-    } else if (step.includes('report') || step.includes('Report') || step.includes('writ')) {
-      return <FileText className="h-4 w-4 animate-pulse" style={{ color: '#facc15' }} />
-    } else {
-      return <Zap className="h-4 w-4 animate-pulse" style={{ color: '#facc15' }} />
-    }
+    if (step.includes('research') || step.includes('Gathering')) return <Search className="w-4 h-4" style={{ color: '#facc15' }} />
+    if (step.includes('analysis') || step.includes('Analyzing')) return <Brain className="w-4 h-4" style={{ color: '#facc15' }} />
+    if (step.includes('report') || step.includes('report')) return <FileText className="w-4 h-4" style={{ color: '#facc15' }} />
+    if (step.includes('complete')) return <CheckCircle className="w-4 h-4" style={{ color: '#22c55e' }} />
+    return <Activity className="w-4 h-4 animate-pulse" style={{ color: '#facc15' }} />
   }
 
   return (
     <>
-      {/* Global dark theme override */}
-      <style>{`
-        body {
-          background-color: #0a0a0a !important;
-          color: #f9f9f9 !important;
-        }
-        html {
-          background-color: #0a0a0a !important;
-        }
-      `}</style>
-      
       <div 
-        className="min-h-screen w-full dark"
-        style={{ 
-          backgroundColor: '#0a0a0a !important',
+        className="min-h-screen w-full"
+        style={{
+          backgroundColor: '#0a0a0a',
           fontFamily: 'Inter, sans-serif',
-          color: '#f9f9f9 !important',
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          overflowY: 'auto',
-          '--background': '#0a0a0a',
-          '--foreground': '#f9f9f9',
-          '--card': '#1a1a1a',
-          '--card-foreground': '#f9f9f9',
-          '--border': '#262626',
-          '--accent': '#facc15',
-          '--accent-foreground': '#0a0a0a',
-          '--muted': '#111111',
-          '--muted-foreground': '#a1a1aa'
-        } as React.CSSProperties}
+          color: '#f9f9f9'
+        }}
       >
-        {/* Header with Navigation and Search */}
-        <div className="w-full border-b" style={{ borderColor: '#262626', backgroundColor: '#0a0a0a' }}>
-          <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                {onBack && (
-                  <Button
-                    onClick={onBack}
-                    variant="ghost"
-                    size="sm"
-                    className="transition-colors duration-200"
-                    style={{
-                      color: '#a1a1aa',
-                      backgroundColor: 'transparent'
-                    }}
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Search
-                  </Button>
-                )}
-                {onCompare && (
-                  <Button
-                    onClick={onCompare}
-                    variant="ghost"
-                    size="sm"
-                    className="transition-colors duration-200"
-                    style={{
-                      color: '#a1a1aa',
-                      backgroundColor: 'transparent'
-                    }}
-                  >
-                    <GitCompare className="w-4 h-4 mr-2" />
-                    Compare Company
-                  </Button>
-                )}
+        {/* Header with search */}
+        {!hideHeader && (
+          <div 
+            className="border-b"
+            style={{
+              borderColor: '#262626',
+              backgroundColor: '#0a0a0a'
+            }}
+          >
+            <div className="max-w-7xl mx-auto px-6 py-4">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-4">
+                  {onBack && (
+                    <Button
+                      onClick={onBack}
+                      variant="ghost"
+                      size="sm"
+                      className="transition-colors duration-200"
+                      style={{
+                        color: '#a1a1aa',
+                        backgroundColor: 'transparent'
+                      }}
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Back to Search
+                    </Button>
+                  )}
+                  {onCompare && (
+                    <Button
+                      onClick={onCompare}
+                      variant="ghost"
+                      size="sm"
+                      className="transition-colors duration-200"
+                      style={{
+                        color: '#a1a1aa',
+                        backgroundColor: 'transparent'
+                      }}
+                    >
+                      <GitCompare className="w-4 h-4 mr-2" />
+                      Compare Company
+                    </Button>
+                  )}
+                </div>
+                <h1 
+                  className="font-bold text-center"
+                  style={{
+                    fontSize: '24px',
+                    fontWeight: 700,
+                    color: '#f9f9f9'
+                  }}
+                >
+                  Competitive Intelligence Dashboard
+                </h1>
+                <div></div>
               </div>
-              <h1 
-                className="font-bold text-center"
-                style={{
-                  fontSize: '24px',
-                  fontWeight: 700,
-                  color: '#f9f9f9'
-                }}
-              >
-                Competitive Intelligence Dashboard
-              </h1>
-              <div></div>
-            </div>
-            
-            {/* Analysis Mode Toggle */}
-            <div className="max-w-4xl mx-auto mb-4 flex justify-center">
-              <AnalysisModeToggle 
-                mode={analysisMode} 
-                onChange={setAnalysisMode}
-              />
-            </div>
+              
+              {/* Analysis Mode Toggle with Animation */}
+              <div className="max-w-4xl mx-auto mb-4 flex justify-center">
+                <div className="relative flex rounded-full p-1" style={{ backgroundColor: '#1a1a1a', border: '1px solid #262626', display: 'inline-flex' }}>
+                  {/* Animated pill background */}
+                  <div
+                    className="absolute rounded-full transition-all duration-300 ease-in-out"
+                    style={{
+                      backgroundColor: '#FACC15',
+                      height: 'calc(100% - 8px)',
+                      top: '4px',
+                      left: analysisMode === 'simple' ? '4px' : 'calc(50% - 4px)',
+                      width: 'calc(50% - 4px)',
+                      boxShadow: '0 2px 8px rgba(250,204,21,0.4)',
+                    }}
+                  />
+                  <button
+                    onClick={() => setAnalysisMode('simple')}
+                    className={`relative z-10 px-6 py-2 text-sm font-medium rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                      analysisMode === 'simple' 
+                        ? 'text-black' 
+                        : 'text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    <Zap className="w-4 h-4" />
+                    <span>Simple</span>
+                  </button>
+                  <button
+                    onClick={() => setAnalysisMode('deep')}
+                    className={`relative z-10 px-6 py-2 text-sm font-medium rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                      analysisMode === 'deep' 
+                        ? 'text-black' 
+                        : 'text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    <Brain className="w-4 h-4" />
+                    <span>Deep Think</span>
+                  </button>
+                </div>
+              </div>
 
-            {/* Search Bar */}
-            <div className="max-w-4xl mx-auto">
-              <CompanySearchCard onAnalyze={handleNewSearch} />
+              {/* Search Bar */}
+              <div className="max-w-4xl mx-auto">
+                <CompanySearchCard onAnalyze={handleNewSearch} />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Main Content - Much Wider Layout */}
+        {/* Main Content */}
         <div className="max-w-7xl mx-auto p-6">
           {/* Progress and Status */}
           {isAnalyzing && (
@@ -478,54 +488,92 @@ export default function DashboardRedesigned({ company, onBack, onCompare, analys
               }}
             >
               <AlertCircle className="h-4 w-4" style={{ color: '#ef4444' }} />
-              <AlertDescription style={{ color: '#ef4444 !important' }}>
+              <AlertDescription style={{ color: '#fca5a5 !important' }}>
                 {error}
               </AlertDescription>
             </Alert>
           )}
 
-          {/* Results - Two Column Layout: Graphs Left, Text Right */}
-          {analysisResult && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Left Column - Graphs and Visualizations */}
-              <div className="space-y-6">
-                <Card 
-                  className="border shadow-xl"
-                  style={{
-                    backgroundColor: '#1a1a1a !important',
-                    borderColor: '#262626 !important',
-                    borderRadius: '12px',
-                    boxShadow: '0 0 12px rgba(0,0,0,0.6)',
-                    border: '1px solid #262626'
+          {/* Results Section */}
+          {result && (
+            <div className="space-y-6 mb-8">
+              {/* Key Metrics Cards */}
+              {result.metrics && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <MetricsCard
+                    title="Threat Level"
+                    value={result.metrics.competitive_metrics?.threat_level || 0}
+                    change={12.5}
+                    trend="up"
+                    subtitle="Competitive threat score"
+                    icon={<AlertCircle className="w-5 h-5" />}
+                  />
+                  <MetricsCard
+                    title="Market Position"
+                    value={result.metrics.competitive_metrics?.market_position || 0}
+                    change={-5}
+                    trend="down"
+                    subtitle="Relative market standing"
+                    icon={<TrendingUp className="w-5 h-5" />}
+                  />
+                  <MetricsCard
+                    title="Innovation Score"
+                    value={result.metrics.competitive_metrics?.innovation || 0}
+                    change={8.3}
+                    trend="up"
+                    subtitle="Technology advancement"
+                    icon={<Zap className="w-5 h-5" />}
+                  />
+                  <MetricsCard
+                    title="Brand Strength"
+                    value={result.metrics.competitive_metrics?.brand_recognition || 0}
+                    change={3.2}
+                    trend="up"
+                    subtitle="Market recognition"
+                    icon={<CheckCircle className="w-5 h-5" />}
+                  />
+                </div>
+              )}
+
+              {/* Competitive Dashboard with Metrics */}
+              {result.metrics && (
+                <CompetitiveDashboard 
+                  data={{
+                    competitor: result.competitor,
+                    competitive_metrics: result.metrics.competitive_metrics,
+                    swot_scores: result.metrics.swot_scores
                   }}
-                >
-                  <CardHeader>
-                    <CardTitle 
-                      style={{
-                        fontSize: '20px',
-                        fontWeight: 700,
-                        color: '#f9f9f9 !important'
-                      }}
-                    >
-                      📊 Competitive Metrics
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {analysisResult.metrics && (
-                      <CompetitiveDashboard 
-                        data={{
-                          competitor: analysisResult.competitor,
-                          competitive_metrics: analysisResult.metrics.competitive_metrics,
-                          swot_scores: analysisResult.metrics.swot_scores
-                        }}
-                      />
-                    )}
-                  </CardContent>
-                </Card>
+                />
+              )}
+
+              {/* Tabs Navigation */}
+              <div 
+                className="flex gap-2 border-b mb-6"
+                style={{ borderColor: '#262626' }}
+              >
+                {[
+                  { id: 'outline', label: 'Outline', icon: <FileText className="w-4 h-4" /> },
+                  { id: 'research', label: 'Research Findings', icon: <Brain className="w-4 h-4" /> },
+                  { id: 'analysis', label: 'Strategic Analysis', icon: <Activity className="w-4 h-4" /> },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className="flex items-center gap-2 px-4 py-3 font-medium transition-all duration-200"
+                    style={{
+                      borderBottom: activeTab === tab.id ? '2px solid #facc15' : '2px solid transparent',
+                      color: activeTab === tab.id ? '#facc15' : '#a1a1aa',
+                      fontSize: '14px'
+                    }}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                  </button>
+                ))}
               </div>
 
-              {/* Right Column - Text and Information */}
-              <div className="space-y-6">
+              {/* Executive Report - Main Content */}
+              {activeTab === 'outline' && (
                 <Card 
                   className="border shadow-xl"
                   style={{
@@ -545,87 +593,114 @@ export default function DashboardRedesigned({ company, onBack, onCompare, analys
                         color: '#f9f9f9 !important'
                       }}
                     >
-                      <CheckCircle className="h-6 w-6" style={{ color: '#22c55e' }} />
-                      <span>Analysis Complete: {analysisResult.competitor}</span>
+                      <FileText className="h-6 w-6" style={{ color: '#facc15' }} />
+                      <span>Executive Intelligence Report</span>
                     </CardTitle>
+                    <CardDescription style={{ color: '#a1a1aa !important' }}>
+                      Comprehensive competitive analysis for {result.competitor}
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div>
-                      <h3 
-                        className="font-semibold mb-4"
-                        style={{
-                          fontSize: '18px',
-                          fontWeight: 700,
-                          color: '#f9f9f9 !important'
-                        }}
-                      >
-                        📝 Executive Report
-                      </h3>
-                      <div 
-                        className="p-6 rounded-lg"
-                        style={{
-                          backgroundColor: '#111111 !important',
-                          borderRadius: '12px'
-                        }}
-                      >
-                        <MarkdownRenderer content={analysisResult.final_report} />
-                      </div>
+                  <CardContent>
+                    <div 
+                      className="p-6 rounded-lg"
+                      style={{
+                        backgroundColor: '#111111 !important',
+                        borderRadius: '8px'
+                      }}
+                    >
+                      <MarkdownRenderer content={result.final_report} />
                     </div>
-
-                    <details className="group">
-                      <summary 
-                        className="cursor-pointer font-medium hover:text-gray-300 flex items-center transition-colors duration-200"
-                        style={{
-                          fontSize: '16px',
-                          fontWeight: 600,
-                          color: '#f9f9f9 !important'
-                        }}
-                      >
-                        <Brain className="h-4 w-4 mr-2" style={{ color: '#facc15' }} />
-                        View Research Findings
-                      </summary>
-                      <div 
-                        className="mt-2 p-6 rounded-lg"
-                        style={{
-                          backgroundColor: '#111111 !important',
-                          borderRadius: '12px'
-                        }}
-                      >
-                        <MarkdownRenderer content={analysisResult.research_findings} />
-                      </div>
-                    </details>
-
-                    <details className="group">
-                      <summary 
-                        className="cursor-pointer font-medium hover:text-gray-300 flex items-center transition-colors duration-200"
-                        style={{
-                          fontSize: '16px',
-                          fontWeight: 600,
-                          color: '#f9f9f9 !important'
-                        }}
-                      >
-                        <Activity className="h-4 w-4 mr-2" style={{ color: '#facc15' }} />
-                        View Strategic Analysis
-                      </summary>
-                      <div 
-                        className="mt-2 p-6 rounded-lg"
-                        style={{
-                          backgroundColor: '#111111 !important',
-                          borderRadius: '12px'
-                        }}
-                      >
-                        <MarkdownRenderer content={analysisResult.strategic_analysis} />
-                      </div>
-                    </details>
                   </CardContent>
                 </Card>
-              </div>
+              )}
+
+              {/* Research Findings Tab */}
+              {activeTab === 'research' && (
+                <Card 
+                  className="border shadow-xl"
+                  style={{
+                    backgroundColor: '#1a1a1a !important',
+                    borderColor: '#262626 !important',
+                    borderRadius: '12px',
+                    border: '1px solid #262626'
+                  }}
+                >
+                  <CardHeader>
+                    <CardTitle 
+                      className="flex items-center space-x-2"
+                      style={{
+                        fontSize: '20px',
+                        fontWeight: 700,
+                        color: '#f9f9f9 !important'
+                      }}
+                    >
+                      <Brain className="h-6 w-6" style={{ color: '#facc15' }} />
+                      <span>Research Findings</span>
+                    </CardTitle>
+                    <CardDescription style={{ color: '#a1a1aa !important' }}>
+                      Detailed research data and market intelligence
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div 
+                      className="p-6 rounded-lg"
+                      style={{
+                        backgroundColor: '#111111 !important',
+                        borderRadius: '8px'
+                      }}
+                    >
+                      <MarkdownRenderer content={result.research_findings} />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Strategic Analysis Tab */}
+              {activeTab === 'analysis' && (
+                <Card 
+                  className="border shadow-xl"
+                  style={{
+                    backgroundColor: '#1a1a1a !important',
+                    borderColor: '#262626 !important',
+                    borderRadius: '12px',
+                    border: '1px solid #262626'
+                  }}
+                >
+                  <CardHeader>
+                    <CardTitle 
+                      className="flex items-center space-x-2"
+                      style={{
+                        fontSize: '20px',
+                        fontWeight: 700,
+                        color: '#f9f9f9 !important'
+                      }}
+                    >
+                      <Activity className="h-6 w-6" style={{ color: '#facc15' }} />
+                      <span>Strategic Analysis</span>
+                    </CardTitle>
+                    <CardDescription style={{ color: '#a1a1aa !important' }}>
+                      SWOT analysis and competitive positioning
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div 
+                      className="p-6 rounded-lg"
+                      style={{
+                        backgroundColor: '#111111 !important',
+                        borderRadius: '8px'
+                      }}
+                    >
+                      <MarkdownRenderer content={result.strategic_analysis} />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </div>
 
         {/* Chatbot at Bottom */}
-        {analysisResult && (
+        {result && (
           <div className="border-t" style={{ borderColor: '#262626', backgroundColor: '#0a0a0a' }}>
             <div className="max-w-7xl mx-auto p-6">
               <Card 
@@ -648,7 +723,7 @@ export default function DashboardRedesigned({ company, onBack, onCompare, analys
                     }}
                   >
                     <MessageSquare className="h-5 w-5" style={{ color: '#facc15' }} />
-                    <span>Ask Questions About {analysisResult.competitor}</span>
+                    <span>Ask Questions About {result.competitor}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

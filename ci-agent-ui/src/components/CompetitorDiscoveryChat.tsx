@@ -6,6 +6,7 @@ import {
   Compass,
   Loader2
 } from 'lucide-react'
+import { isMockCompany, generateMockStreamEvents } from '../utils/mockData'
 
 interface CompetitorDiscoveryChatProps {
   onAnalyze: (opts: { company: string; url?: string; section: string }) => void
@@ -33,6 +34,35 @@ export default function CompetitorDiscoveryChat({ onAnalyze }: CompetitorDiscove
     if (!businessIdea.trim() || isLoading) return
 
     setIsLoading(true)
+
+    // Check if this is a mock request
+    if (isMockCompany(businessIdea)) {
+      console.log('🎭 Mock discovery data detected')
+      
+      // Simulate streaming with mock events
+      const mockEvents = generateMockStreamEvents('discovery')
+      
+      for (let i = 0; i < mockEvents.length; i++) {
+        const event = mockEvents[i]
+        
+        // Simulate delay between events
+        await new Promise(resolve => setTimeout(resolve, 800))
+        
+        if (event.type === 'complete') {
+          const discoveryData = event.data
+          if (discoveryData?.discovery_report) {
+            setDiscoveryResult({
+              business_idea: discoveryData.business_idea,
+              discovery_report: discoveryData.discovery_report,
+              competitors: parseCompetitorsFromReport(discoveryData.discovery_report)
+            })
+          }
+        }
+      }
+      
+      setIsLoading(false)
+      return
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}/discover/competitors/stream`, {
