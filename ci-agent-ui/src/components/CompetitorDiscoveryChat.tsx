@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
 import { 
-  Send, 
-  Bot, 
-  User, 
-  Lightbulb,
+  Compass,
   Loader2
 } from 'lucide-react'
 
@@ -12,18 +11,11 @@ interface CompetitorDiscoveryChatProps {
   onAnalyze: (opts: { company: string; url?: string; section: string }) => void
 }
 
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: string
-}
-
 const API_BASE_URL = 'http://localhost:8000'
 
 export default function CompetitorDiscoveryChat({ onAnalyze }: CompetitorDiscoveryChatProps) {
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
-  const [chatInput, setChatInput] = useState('')
-  const [isChatLoading, setIsChatLoading] = useState(false)
+  const [businessIdea, setBusinessIdea] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const [discoveryResult, setDiscoveryResult] = useState<{
     business_idea: string
     discovery_report: string
@@ -36,19 +28,11 @@ export default function CompetitorDiscoveryChat({ onAnalyze }: CompetitorDiscove
     }>
   } | null>(null)
 
-  const handleChatSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!chatInput.trim() || isChatLoading) return
+    if (!businessIdea.trim() || isLoading) return
 
-    const userMessage: ChatMessage = {
-      role: 'user',
-      content: chatInput.trim(),
-      timestamp: new Date().toISOString()
-    }
-
-    setChatMessages(prev => [...prev, userMessage])
-    setChatInput('')
-    setIsChatLoading(true)
+    setIsLoading(true)
 
     try {
       const response = await fetch(`${API_BASE_URL}/discover/competitors/stream`, {
@@ -58,7 +42,7 @@ export default function CompetitorDiscoveryChat({ onAnalyze }: CompetitorDiscove
           'Accept': 'text/event-stream',
         },
         body: JSON.stringify({
-          business_idea: userMessage.content,
+          business_idea: businessIdea.trim(),
           stream: true
         }),
       })
@@ -74,14 +58,6 @@ export default function CompetitorDiscoveryChat({ onAnalyze }: CompetitorDiscove
         throw new Error('Failed to get response reader')
       }
 
-      // Add a placeholder assistant message that we'll update
-      const placeholderMessage: ChatMessage = {
-        role: 'assistant',
-        content: '🔍 Searching for competitors across multiple platforms...',
-        timestamp: new Date().toISOString()
-      }
-      setChatMessages(prev => [...prev, placeholderMessage])
-
       while (true) {
         const { done, value } = await reader.read()
         
@@ -95,39 +71,13 @@ export default function CompetitorDiscoveryChat({ onAnalyze }: CompetitorDiscove
             try {
               const eventData = JSON.parse(line.slice(6))
 
-              // Update the assistant message based on event type
-              if (eventData.type === 'status_update') {
-                setChatMessages(prev => {
-                  const newMessages = [...prev]
-                  if (newMessages.length > 0) {
-                    newMessages[newMessages.length - 1] = {
-                      ...newMessages[newMessages.length - 1],
-                      content: eventData.message || 'Processing...'
-                    }
-                  }
-                  return newMessages
-                })
-              } else if (eventData.type === 'complete') {
-                // Final discovery results
+              if (eventData.type === 'complete') {
                 const discoveryData = eventData.data
                 if (discoveryData?.discovery_report) {
-                  // Set discovery result for the results
                   setDiscoveryResult({
                     business_idea: discoveryData.business_idea,
                     discovery_report: discoveryData.discovery_report,
                     competitors: parseCompetitorsFromReport(discoveryData.discovery_report)
-                  })
-                  
-                  // Update chat with completion message
-                  setChatMessages(prev => {
-                    const newMessages = [...prev]
-                    if (newMessages.length > 0) {
-                      newMessages[newMessages.length - 1] = {
-                        ...newMessages[newMessages.length - 1],
-                        content: `✅ Discovery complete! Found ${parseCompetitorsFromReport(discoveryData.discovery_report).length} potential competitors for your business idea. Select a competitor below to analyze in detail.`
-                      }
-                    }
-                    return newMessages
                   })
                 }
                 break
@@ -141,14 +91,16 @@ export default function CompetitorDiscoveryChat({ onAnalyze }: CompetitorDiscove
         }
       }
     } catch (err) {
-      const errorMessage: ChatMessage = {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error while searching for competitors. Please try again.',
-        timestamp: new Date().toISOString()
-      }
-      setChatMessages(prev => [...prev.slice(0, -1), errorMessage]) // Replace the last message
+      console.error('Discovery error:', err)
+      alert('Failed to discover competitors. Please try again.')
     } finally {
-      setIsChatLoading(false)
+      setIsLoading(false)
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && businessIdea.trim()) {
+      handleSubmit(e)
     }
   }
 
@@ -207,134 +159,108 @@ export default function CompetitorDiscoveryChat({ onAnalyze }: CompetitorDiscove
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
-      {/* Chat Container */}
+    <form onSubmit={handleSubmit} className="w-full max-w-4xl mx-auto">
+      {/* Mobile Layout - visible only on small screens */}
+      <div className="md:hidden space-y-4 mb-4">
+        <div>
+          <Label htmlFor="business-mobile" className="text-sm font-medium text-foreground mb-2 block">
+            Business Idea
+          </Label>
+          <Input
+            id="business-mobile"
+            type="text"
+            value={businessIdea}
+            onChange={(e) => setBusinessIdea(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Describe your business idea..."
+            className="w-full h-12 bg-card border-border text-foreground"
+            style={{
+              backgroundColor: '#1a1a1a',
+              borderColor: '#262626',
+              color: '#f9f9f9'
+            }}
+            disabled={isLoading}
+            required
+          />
+        </div>
+
+        <Button
+          type="submit"
+          disabled={!businessIdea.trim() || isLoading}
+          className="w-full h-12 font-bold transition-all duration-200 disabled:opacity-50"
+          style={{
+            backgroundColor: '#facc15',
+            color: '#0a0a0a',
+            borderRadius: '9999px'
+          }}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Discovering...
+            </>
+          ) : (
+            <>
+              <Compass className="w-4 h-4 mr-2" />
+              Discover Competitors
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Desktop Pill Search Bar - hidden on mobile */}
       <div 
-        className="rounded-xl border shadow-lg overflow-hidden"
+        className="hidden md:flex items-center rounded-full border shadow-lg overflow-hidden"
         style={{
           backgroundColor: '#1a1a1a',
           borderColor: '#262626',
           boxShadow: '0 0 12px rgba(0,0,0,0.6)'
         }}
       >
-        {/* Chat Header */}
-        <div className="px-6 py-4 border-b" style={{ borderColor: '#262626' }}>
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="font-semibold" style={{ color: '#f9f9f9' }}>Competitor Discovery Assistant</h3>
-              <p className="text-sm text-gray-400">Describe your business idea to find potential competitors</p>
-            </div>
-          </div>
+        {/* Hidden label for accessibility */}
+        <Label htmlFor="business-desktop" className="sr-only">Business Idea</Label>
+
+        {/* Business Idea Input */}
+        <div className="flex-1 px-6 py-4">
+          <Input
+            id="business-desktop"
+            type="text"
+            value={businessIdea}
+            onChange={(e) => setBusinessIdea(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Describe your business idea (e.g., AI-powered project management for remote teams)..."
+            className="border-0 bg-transparent text-base focus:ring-0 focus:outline-none p-0 h-auto"
+            style={{
+              color: '#f9f9f9',
+              fontFamily: 'Inter, sans-serif'
+            }}
+            disabled={isLoading}
+            required
+          />
         </div>
 
-        {/* Chat Messages */}
-        <div className="h-96 overflow-y-auto p-6 space-y-4">
-          {chatMessages.length === 0 ? (
-            <div className="text-center py-12">
-              <Lightbulb className="w-12 h-12 mx-auto text-yellow-400 mb-4" />
-              <h4 className="text-lg font-medium text-gray-200 mb-2">Ready to discover your competitors?</h4>
-              <p className="text-gray-400 max-w-md mx-auto">
-                Tell me about your business idea, product, or service and I'll help you identify potential competitors in your market.
-              </p>
-              <div className="mt-6 space-y-2 text-sm text-gray-500">
-                <p>Try something like:</p>
-                <div className="space-y-1">
-                  <p>"I'm building a project management tool for remote teams"</p>
-                  <p>"My startup is a food delivery app for healthy meals"</p>
-                  <p>"I want to create an AI-powered customer service chatbot"</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            chatMessages.map((message, index) => (
-              <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`flex items-start space-x-3 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    message.role === 'user' 
-                      ? 'bg-yellow-400' 
-                      : 'bg-gradient-to-r from-blue-500 to-purple-600'
-                  }`}>
-                    {message.role === 'user' ? (
-                      <User className="w-4 h-4 text-black" />
-                    ) : (
-                      <Bot className="w-4 h-4 text-white" />
-                    )}
-                  </div>
-                  <div className={`rounded-lg px-4 py-3 ${
-                    message.role === 'user' 
-                      ? 'bg-yellow-400 text-black' 
-                      : 'bg-gray-800 text-gray-200'
-                  }`}>
-                    <p className="text-sm">{message.content}</p>
-                    <p className={`text-xs mt-1 ${
-                      message.role === 'user' ? 'text-black/70' : 'text-gray-400'
-                    }`}>
-                      {new Date(message.timestamp).toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-          
-          {isChatLoading && (
-            <div className="flex justify-start">
-              <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                  <Bot className="w-4 h-4 text-white" />
-                </div>
-                <div className="bg-gray-800 rounded-lg px-4 py-3">
-                  <div className="flex items-center space-x-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-                    <span className="text-sm text-gray-200">Searching for competitors...</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+        {/* Search Button */}
+        <div className="p-2">
+          <Button
+            type="submit"
+            disabled={!businessIdea.trim() || isLoading}
+            className="w-12 h-12 rounded-full p-0 transition-all duration-200 disabled:opacity-50 hover:brightness-110"
+            style={{
+              backgroundColor: isLoading ? '#6b7280' : '#facc15',
+              color: '#0a0a0a',
+              boxShadow: isLoading ? '0 2px 8px rgba(107,114,128,0.4)' : '0 2px 8px rgba(250,204,21,0.4)'
+            }}
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Compass className="w-5 h-5" />
+            )}
+          </Button>
         </div>
-
-        {/* Chat Input */}
-        <form onSubmit={handleChatSubmit} className="px-6 py-4 border-t" style={{ borderColor: '#262626' }}>
-          <div className="flex items-center space-x-3">
-            <div className="flex-1">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Describe your business idea..."
-                className="w-full px-4 py-3 rounded-lg border-0 focus:ring-2 focus:ring-yellow-400 focus:outline-none"
-                style={{
-                  backgroundColor: '#111827',
-                  color: '#f9f9f9',
-                }}
-                disabled={isChatLoading}
-              />
-            </div>
-            <Button
-              type="submit"
-              disabled={!chatInput.trim() || isChatLoading}
-              className="w-12 h-12 rounded-full p-0 transition-all duration-200 disabled:opacity-50 hover:brightness-110"
-              style={{
-                backgroundColor: (!chatInput.trim() || isChatLoading) ? '#6b7280' : '#facc15',
-                color: '#0a0a0a',
-                boxShadow: (!chatInput.trim() || isChatLoading) ? '0 2px 8px rgba(107,114,128,0.4)' : '0 2px 8px rgba(250,204,21,0.4)'
-              }}
-            >
-              {isChatLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-            </Button>
-          </div>
-        </form>
       </div>
 
-      {/* Quick Competitor Cards (if discovery completed) */}
+      {/* Competitor Cards - shown after discovery */}
       {discoveryResult && discoveryResult.competitors && discoveryResult.competitors.length > 0 && (
         <div className="mt-8">
           <h4 className="text-lg font-semibold text-white mb-4 text-center">
@@ -362,6 +288,6 @@ export default function CompetitorDiscoveryChat({ onAnalyze }: CompetitorDiscove
           </div>
         </div>
       )}
-    </div>
+    </form>
   )
 }

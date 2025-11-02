@@ -1,18 +1,19 @@
 import { useState } from 'react'
 import CompanySearchCard from './CompanySearchCard'
 import CompetitorDiscoveryChat from './CompetitorDiscoveryChat'
+import CompareCompaniesForm from './CompareCompaniesForm'
 import Footer from './Footer'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
-import { Search, Compass, BarChart3 } from 'lucide-react'
+import { Search, Compass, GitCompare } from 'lucide-react'
 
 interface LandingPageProps {
   onAnalyze: (opts: { company: string; url?: string; section: string }) => void
-  onCompare: () => void
+  onCompare: (company1?: string, company2?: string, section?: string) => void
 }
 
 export default function LandingPage({ onAnalyze, onCompare }: LandingPageProps) {
-  const [mode, setMode] = useState<'analyze' | 'discover'>('analyze')
+  const [mode, setMode] = useState<'analyze' | 'discover' | 'compare'>('analyze')
 
   return (
     <div 
@@ -50,22 +51,6 @@ export default function LandingPage({ onAnalyze, onCompare }: LandingPageProps) 
 
             {/* Navigation Links */}
             <div className="hidden md:flex items-center space-x-4">
-              <Button
-                onClick={onCompare}
-                className="font-medium transition-all duration-200 hover:brightness-110 hover:scale-105"
-                style={{
-                  backgroundColor: 'transparent',
-                  color: '#f9f9f9',
-                  border: '1px solid #262626',
-                  borderRadius: '9999px',
-                  padding: '8px 16px',
-                  fontSize: '14px',
-                  fontWeight: 500
-                }}
-              >
-                <BarChart3 className="w-4 h-4 mr-2" />
-                Compare Companies
-              </Button>
               <Button
                 className="font-bold transition-all duration-200 hover:brightness-110 hover:scale-105"
                 style={{
@@ -136,51 +121,56 @@ export default function LandingPage({ onAnalyze, onCompare }: LandingPageProps) 
               <span style={{ color: '#facc15' }}>AI Agents</span>
             </h1>
 
-            {/* Muted Subtitle */}
-            <p 
-              className="text-xl mb-8 max-w-2xl mx-auto"
-              style={{
-                fontSize: '18px',
-                fontWeight: 400,
-                color: '#a1a1aa',
-                lineHeight: 1.4,
-                marginBottom: '32px'
-              }}
-            >
-              Get comprehensive competitive intelligence in minutes, not weeks. Our multi-agent AI system 
-              researches, analyzes, and delivers executive-ready insights automatically.
-            </p>
-
             {/* Mode Toggle */}
             <div className="flex justify-center mb-8">
-              <div className="flex rounded-full p-1" style={{ backgroundColor: '#1a1a1a', border: '1px solid #262626' }}>
+              <div className="relative flex rounded-full p-1" style={{ backgroundColor: '#1a1a1a', border: '1px solid #262626' }}>
+                {/* Animated pill background */}
+                <div
+                  className="absolute rounded-full transition-all duration-300 ease-in-out"
+                  style={{
+                    backgroundColor: '#FACC15',
+                    height: 'calc(100% - 8px)',
+                    top: '4px',
+                    left: mode === 'analyze' ? '4px' : mode === 'discover' ? 'calc(33.333% + 1.333px)' : 'calc(66.666% + 2.666px)',
+                    width: 'calc(33.333% - 2.666px)',
+                    boxShadow: '0 2px 8px rgba(250,204,21,0.4)',
+                  }}
+                />
                 <button
                   onClick={() => setMode('analyze')}
-                  className={`px-6 py-3 text-sm font-medium rounded-full transition-all flex items-center space-x-2 ${
+                  className={`relative z-10 px-4 md:px-6 py-3 text-sm font-medium rounded-full transition-all duration-300 flex items-center space-x-1 md:space-x-2 ${
                     mode === 'analyze' 
-                      ? 'text-black shadow-sm' 
+                      ? 'text-black' 
                       : 'text-gray-400 hover:text-gray-200'
                   }`}
-                  style={{ 
-                    backgroundColor: mode === 'analyze' ? '#FACC15' : 'transparent'
-                  }}
                 >
                   <Search className="w-4 h-4" />
-                  <span>Analyze Competitor</span>
+                  <span className="hidden sm:inline">Analyze Competitor</span>
+                  <span className="sm:hidden">Analyze</span>
                 </button>
                 <button
                   onClick={() => setMode('discover')}
-                  className={`px-6 py-3 text-sm font-medium rounded-full transition-all flex items-center space-x-2 ${
+                  className={`relative z-10 px-4 md:px-6 py-3 text-sm font-medium rounded-full transition-all duration-300 flex items-center space-x-1 md:space-x-2 ${
                     mode === 'discover' 
-                      ? 'text-black shadow-sm' 
+                      ? 'text-black' 
                       : 'text-gray-400 hover:text-gray-200'
                   }`}
-                  style={{ 
-                    backgroundColor: mode === 'discover' ? '#FACC15' : 'transparent'
-                  }}
                 >
                   <Compass className="w-4 h-4" />
-                  <span>Discover Competitors</span>
+                  <span className="hidden sm:inline">Discover Competitors</span>
+                  <span className="sm:hidden">Discover</span>
+                </button>
+                <button
+                  onClick={() => setMode('compare')}
+                  className={`relative z-10 px-4 md:px-6 py-3 text-sm font-medium rounded-full transition-all duration-300 flex items-center space-x-1 md:space-x-2 ${
+                    mode === 'compare' 
+                      ? 'text-black' 
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  <GitCompare className="w-4 h-4" />
+                  <span className="hidden sm:inline">Compare Companies</span>
+                  <span className="sm:hidden">Compare</span>
                 </button>
               </div>
             </div>
@@ -189,10 +179,27 @@ export default function LandingPage({ onAnalyze, onCompare }: LandingPageProps) 
             <div className="mb-8">
               {mode === 'analyze' ? (
                 <CompanySearchCard onAnalyze={onAnalyze} />
-              ) : (
+              ) : mode === 'discover' ? (
                 <CompetitorDiscoveryChat onAnalyze={onAnalyze} />
+              ) : (
+                <CompareCompaniesForm onCompare={onCompare} />
               )}
             </div>
+
+            {/* Muted Subtitle - moved below the interface */}
+            <p 
+              className="text-xl mb-8 max-w-2xl mx-auto"
+              style={{
+                fontSize: '18px',
+                fontWeight: 400,
+                color: '#a1a1aa',
+                lineHeight: 1.4,
+                marginTop: '32px'
+              }}
+            >
+              Get comprehensive competitive intelligence in minutes, not weeks. Our multi-agent AI system 
+              researches, analyzes, and delivers executive-ready insights automatically.
+            </p>
           </div>
         </section>
 

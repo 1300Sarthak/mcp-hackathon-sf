@@ -27,7 +27,7 @@ load_dotenv()
 
 # Get environment variables
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:6969")
 
 # Import our competitive intelligence system
 

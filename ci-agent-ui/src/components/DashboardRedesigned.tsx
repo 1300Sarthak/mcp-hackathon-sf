@@ -38,7 +38,7 @@ import DemoScenarios from './DemoScenarios'
 import MarkdownRenderer from './MarkdownRenderer'
 import CompetitiveDashboard from './CompetitiveDashboard'
 import CompanySearchCard from './CompanySearchCard'
-import AnalysisModeToggle, { AnalysisMode } from './AnalysisModeToggle'
+import AnalysisModeToggle, { type AnalysisMode } from './AnalysisModeToggle'
 
 // Form validation schema
 const formSchema = z.object({

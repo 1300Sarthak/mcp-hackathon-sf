@@ -2,7 +2,7 @@ import { useState } from 'react'
 import LandingPage from './components/LandingPage'
 import DashboardRedesigned from './components/DashboardRedesigned'
 import CompanyComparison from './components/CompanyComparison'
-import { AnalysisMode } from './components/AnalysisModeToggle'
+import { type AnalysisMode } from './components/AnalysisModeToggle'
 
 function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'dashboard' | 'comparison'>('landing')
@@ -12,6 +12,11 @@ function App() {
     section: string
     analysisMode?: AnalysisMode
   } | null>(null)
+  const [comparisonData, setComparisonData] = useState<{
+    company1?: string
+    company2?: string
+    section?: string
+  }>({})
 
   const handleAnalyze = (opts: { company: string; url?: string; section: string; analysisMode?: AnalysisMode }) => {
     console.log('Analysis requested:', opts)
@@ -22,9 +27,11 @@ function App() {
   const handleBackToLanding = () => {
     setCurrentView('landing')
     setAnalysisData(null)
+    setComparisonData({})
   }
 
-  const handleCompareCompanies = () => {
+  const handleCompareCompanies = (company1?: string, company2?: string, section?: string) => {
+    setComparisonData({ company1, company2, section })
     setCurrentView('comparison')
   }
 
@@ -44,7 +51,8 @@ function App() {
     return (
       <CompanyComparison
         onBack={handleBackToLanding}
-        initialCompany1={analysisData?.company}
+        initialCompany1={comparisonData.company1 || analysisData?.company}
+        initialCompany2={comparisonData.company2}
       />
     )
   }
