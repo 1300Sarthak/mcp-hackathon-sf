@@ -215,37 +215,12 @@ export default function CompanyComparison({ onBack, initialCompany1, initialComp
     const userMessage = chatInput.trim()
     setChatInput('')
     setChatMessages(prev => [...prev, { type: 'user', message: userMessage }])
-    setIsChatLoading(true)
-
-    try {
-      // Create context from both companies for the RAG query
-      const companies = [company1.result?.competitor, company2.result?.competitor].filter(Boolean)
-      const contextualQuery = companies.length > 0 
-        ? `Regarding the analysis of ${companies.join(' and ')}: ${userMessage}`
-        : userMessage
-
-      const response = await fetch('http://localhost:8001/rag/query', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: contextualQuery
-        })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setChatMessages(prev => [...prev, { type: 'bot', message: data.response }])
-      } else {
-        setChatMessages(prev => [...prev, { type: 'bot', message: 'Sorry, I encountered an error processing your question.' }])
-      }
-    } catch (error) {
-      console.error('Chat error:', error)
-      setChatMessages(prev => [...prev, { type: 'bot', message: 'Sorry, I\'m unable to answer right now. Please try again later.' }])
-    } finally {
-      setIsChatLoading(false)
-    }
+    
+    // RAG feature removed - provide helpful fallback
+    setChatMessages(prev => [...prev, { 
+      type: 'bot', 
+      message: 'Chat feature is currently unavailable. Please refer to the comparison analysis above for insights about these competitors.' 
+    }])
   }
 
   const getStepIcon = (step: string) => {

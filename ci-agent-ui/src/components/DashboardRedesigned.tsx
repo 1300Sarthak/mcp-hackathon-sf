@@ -145,40 +145,19 @@ export default function DashboardRedesigned({ company, onBack, onCompare, analys
     })
   }
 
-  // Handle chat message
+  // Handle chat message - simplified without RAG (feature removed)
   const handleChatMessage = async () => {
     if (!chatInput.trim() || isChatLoading) return
 
     const userMessage = chatInput.trim()
     setChatInput('')
     setChatMessages(prev => [...prev, { type: 'user', message: userMessage }])
-    setIsChatLoading(true)
-
-    try {
-      // Use optimized LlamaIndex RAG query endpoint
-      const response = await fetch(`${API_BASE_URL}/rag/query`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: userMessage,
-          competitor_filter: company // Filter by current company
-        })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setChatMessages(prev => [...prev, { type: 'bot', message: data.response }])
-      } else {
-        setChatMessages(prev => [...prev, { type: 'bot', message: 'Sorry, I encountered an error processing your question.' }])
-      }
-    } catch (error) {
-      console.error('Chat error:', error)
-      setChatMessages(prev => [...prev, { type: 'bot', message: 'Sorry, I\'m unable to answer right now. Please try again later.' }])
-    } finally {
-      setIsChatLoading(false)
-    }
+    
+    // RAG feature removed - provide helpful fallback
+    setChatMessages(prev => [...prev, { 
+      type: 'bot', 
+      message: 'Chat feature is currently unavailable. Please refer to the analysis results above for insights about this competitor.' 
+    }])
   }
 
   const analyzeCompetitor = async (values: FormValues) => {
@@ -195,7 +174,7 @@ export default function DashboardRedesigned({ company, onBack, onCompare, analys
       })
 
       // Send the POST request to start streaming analysis
-      const response = await fetch(`${API_BASE_URL}/analyze/enhanced/stream`, {
+      const response = await fetch(`${API_BASE_URL}/analyze/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -203,7 +182,7 @@ export default function DashboardRedesigned({ company, onBack, onCompare, analys
         body: JSON.stringify({
           competitor_name: values.companyName,
           competitor_website: values.companyUrl || undefined,
-          analysis_mode: analysisMode,
+          niche: analysisMode === 'deep' ? 'all' : 'all', // Map to niche parameter
           stream: true
         })
       })
