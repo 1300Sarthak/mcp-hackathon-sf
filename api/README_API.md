@@ -1,375 +1,137 @@
-# Multi-Agent Competitive Intelligence API
+# Competitive Intelligence API
 
-A FastAPI-based RESTful API for competitive intelligence analysis using specialized AI agents with real-time streaming capabilities.
-
-## Features
-
-- **🤖 Multi-Agent Workflow**: Three specialized agents (Researcher, Analyst, Writer)
-- **🌊 Real-time Streaming**: Live updates during analysis with tool call monitoring
-- **📊 Comprehensive Analysis**: Research findings, strategic analysis, and executive reports
-- **🔗 RESTful API**: Standard HTTP endpoints with JSON responses
-- **📝 Interactive Documentation**: Auto-generated OpenAPI/Swagger docs
-- **🎯 Session Management**: Track and monitor active analysis sessions
-
-## Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   📊 Researcher │───▶│   🔍 Analyst    │───▶│   📝 Writer     │
-│     Agent       │    │     Agent       │    │     Agent       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
-   Data Collection      Strategic Analysis       Report Generation
-   - Web scraping       - SWOT analysis         - Executive summary
-   - Market research     - Threat assessment     - Recommendations
-   - Company intel       - Competitive position  - Action items
-```
+FastAPI-based REST API for competitive intelligence analysis using multi-agent AI with real-time streaming.
 
 ## Quick Start
 
-### 1. Install Dependencies
-
 ```bash
-# Install FastAPI and related dependencies
+# Install dependencies
 pip install -r requirements.txt
 
-# Ensure your existing strands environment is set up
-# (strands, strands-tools, litellm should already be installed)
-```
+# Set environment variables
+export GEMINI_API_KEY="your_key"
+export BRIGHTDATA_API_KEY="your_key"
 
-### 2. Set Environment Variables
-
-```bash
-export GEMINI_API_KEY="your_gemini_api_key"
-export BRIGHTDATA_API_KEY="your_brightdata_api_key"
-```
-
-### 3. Start the API Server
-
-```bash
-# Development mode with auto-reload
+# Start server
 python app.py
-
-# Or using uvicorn directly
-uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 4. Access the API
+**URLs:**
+- API: http://localhost:8000
+- Docs: http://localhost:8000/docs
 
-- **API Base URL**: http://localhost:8000
-- **Interactive Docs**: http://localhost:8000/docs
-- **OpenAPI Schema**: http://localhost:8000/openapi.json
+## Endpoints
 
-## API Endpoints
+### Health & Status
 
-### Core Endpoints
-
-#### `GET /health`
-Health check endpoint
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-09-11T10:30:00Z",
-  "version": "1.0.0"
-}
+```bash
+GET /health              # Health check
+GET /status              # API and cache status
 ```
 
-#### `GET /status`
-Get API and environment status
-```json
-{
-  "api_status": "running",
-  "gemini_status": "connected",
-  "active_sessions": 2,
-  "timestamp": "2025-09-11T10:30:00Z"
-}
+### Competitive Analysis
+
+```bash
+POST /analyze            # Run analysis (non-streaming)
+POST /analyze/stream     # Run analysis with real-time updates
 ```
 
-#### `POST /analyze`
-Perform competitive analysis (non-streaming)
+**Request body:**
 ```json
 {
   "competitor_name": "Slack",
   "competitor_website": "https://slack.com",
-  "stream": false
+  "niche": "all",
+  "stream": true
 }
 ```
 
-#### `POST /analyze/stream`
-Perform competitive analysis with streaming updates
+**Niche options:** `all`, `it`, `sales`, `marketing`, `finance`, `product`, `hr`
+
+### Competitor Discovery
+
+```bash
+POST /discover/competitors         # Find competitors from business idea
+POST /discover/competitors/stream  # With streaming updates
+```
+
+**Request body:**
 ```json
 {
-  "competitor_name": "Slack",
-  "competitor_website": "https://slack.com",
+  "business_idea": "A project management tool for remote teams",
   "stream": true
 }
 ```
 
 ### Session Management
 
-#### `GET /sessions`
-Get active streaming sessions
-```json
-{
-  "active_sessions": 1,
-  "sessions": {
-    "session_20250911_103000_Slack": {
-      "start_time": "2025-09-11T10:30:00Z",
-      "competitor": "Slack",
-      "status": "running"
-    }
-  }
-}
+```bash
+GET /sessions              # List active sessions
+GET /sessions/{session_id} # Get session details
+GET /demo-scenarios        # Get demo test cases
 ```
 
-#### `GET /sessions/{session_id}`
-Get details for a specific session
+### Cache Management
 
-### Demo & Testing
-
-#### `GET /demo-scenarios`
-Get predefined demo scenarios for testing
-```json
-{
-  "scenarios": [
-    {
-      "id": 1,
-      "name": "Oxylabs",
-      "website": "https://oxylabs.io",
-      "description": "Data collection and web scraping"
-    }
-  ]
-}
+```bash
+GET /cache/stats                        # Cache statistics
+DELETE /cache/competitor/{name}         # Clear competitor cache
+POST /cache/refresh/{name}              # Force refresh
 ```
 
 ## Streaming Events
 
-The streaming endpoint (`/analyze/stream`) provides real-time updates through Server-Sent Events (SSE):
+The streaming endpoints use Server-Sent Events (SSE):
 
-### Event Types
-
-1. **session_start**: Analysis session initiated
-2. **status_update**: Progress updates (research_start, analysis_start, etc.)
-3. **tool_call**: Real-time tool execution notifications
-4. **complete**: Analysis finished with full results
-5. **error**: Error occurred during analysis
-6. **heartbeat**: Keep-alive signals
-
-### Example Stream Event
-```json
-{
-  "timestamp": "2025-09-11T10:30:00Z",
-  "type": "tool_call",
-  "tool_name": "bright_data",
-  "tool_input": {
-    "action": "web_search",
-    "query": "Slack company news 2025"
-  }
-}
-```
+| Event Type | Description |
+|------------|-------------|
+| session_start | Analysis initiated |
+| status_update | Progress updates |
+| tool_call | Tool execution |
+| complete | Analysis finished |
+| error | Error occurred |
+| heartbeat | Keep-alive |
 
 ## Usage Examples
 
-### Python Client
-
+**Python:**
 ```python
 import requests
 
-# Non-streaming analysis
 response = requests.post("http://localhost:8000/analyze", json={
     "competitor_name": "Slack",
-    "competitor_website": "https://slack.com"
+    "competitor_website": "https://slack.com",
+    "niche": "all"
 })
-result = response.json()
-
-# Streaming analysis
-response = requests.post(
-    "http://localhost:8000/analyze/stream",
-    json={"competitor_name": "Slack", "stream": True},
-    stream=True
-)
-
-for line in response.iter_lines(decode_unicode=True):
-    if line.startswith("data: "):
-        event = json.loads(line[6:])
-        print(f"Event: {event['type']}")
+print(response.json())
 ```
 
-### JavaScript/Frontend
-
-```javascript
-// Streaming with EventSource
-const eventSource = new EventSource('/analyze/stream');
-
-eventSource.onmessage = function(event) {
-    const data = JSON.parse(event.data);
-    console.log('Event:', data.type, data.message);
-    
-    if (data.type === 'complete') {
-        console.log('Analysis completed:', data.data);
-        eventSource.close();
-    }
-};
-```
-
-### cURL Examples
-
+**cURL:**
 ```bash
-# Health check
-curl http://localhost:8000/health
-
-# Non-streaming analysis
-curl -X POST http://localhost:8000/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"competitor_name": "Slack", "competitor_website": "https://slack.com"}'
-
-# Streaming analysis
 curl -X POST http://localhost:8000/analyze/stream \
   -H "Content-Type: application/json" \
-  -H "Accept: text/event-stream" \
   -d '{"competitor_name": "Slack", "stream": true}'
 ```
 
-## Client Example
-
-Run the provided client example:
-
-```bash
-python api_client_example.py
-```
-
-This demonstrates:
-- Non-streaming analysis
-- Streaming analysis with real-time updates
-- Session management
-- Error handling
-
 ## Response Schema
 
-### Analysis Response
 ```json
 {
   "competitor": "string",
   "website": "string",
   "research_findings": "string",
-  "strategic_analysis": "string", 
+  "strategic_analysis": "string",
   "final_report": "string",
+  "metrics": {},
   "timestamp": "string",
   "status": "success",
-  "workflow": "multi_agent",
-  "session_id": "string"
+  "workflow": "multi_agent"
 }
 ```
 
-### Error Response
-```json
-{
-  "error": "string",
-  "timestamp": "string",
-  "status": "error"
-}
-```
-
-## Development
-
-### Running Tests
+## Docker
 
 ```bash
-# Install test dependencies
-pip install pytest httpx
-
-# Run tests (create test files as needed)
-pytest tests/
+docker build -t ci-api ./api
+docker run -p 8000:8000 -e GEMINI_API_KEY=xxx ci-api
 ```
-
-### Development Mode
-
-```bash
-# Run with auto-reload
-uvicorn app:app --reload --log-level debug
-
-# Or use the built-in development server
-python app.py
-```
-
-## Production Deployment
-
-### Environment Configuration
-
-```bash
-# Production environment variables
-export ENVIRONMENT=production
-export API_HOST=0.0.0.0
-export API_PORT=8000
-export LOG_LEVEL=info
-
-# Security
-export ALLOWED_ORIGINS="https://yourdomain.com"
-export API_KEY_HEADER="X-API-Key"  # Optional API key authentication
-```
-
-### Docker Deployment
-
-```dockerfile
-FROM python:3.10-slim
-
-WORKDIR /app
-COPY requirements-api.txt .
-RUN pip install -r requirements-api.txt
-
-COPY . .
-EXPOSE 8000
-
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-### Performance Considerations
-
-- **Concurrent Requests**: FastAPI handles multiple requests concurrently
-- **Session Cleanup**: Streaming sessions are automatically cleaned up after 5 minutes
-- **Memory Management**: Large analysis results are streamed to prevent memory issues
-- **Rate Limiting**: Consider implementing rate limiting for production use
-
-## Frontend Integration
-
-The API is designed to work with modern frontend frameworks:
-
-- **React/Vue/Angular**: Use EventSource or fetch for streaming
-- **WebSocket Alternative**: SSE provides simpler real-time updates
-- **CORS Enabled**: Ready for cross-origin requests (configure for production)
-
-Example frontend integration coming soon!
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Environment Variables**: Ensure GEMINI_API_KEY and BRIGHTDATA_API_KEY are set
-2. **Dependencies**: Make sure strands and related packages are installed
-3. **Port Conflicts**: Default port 8000, change if needed
-4. **Streaming Issues**: Check firewall/proxy settings for SSE support
-
-### Logs
-
-Check logs for detailed error information:
-```bash
-# Application logs show in console when running
-python app.py
-
-# Or with uvicorn
-uvicorn app:app --log-level debug
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create feature branch
-3. Add tests for new functionality
-4. Submit pull request
-
-## License
-
-[Your license here]
-
-## Enhanced By: Sarthak, Tanzil, Edwin, Samson
